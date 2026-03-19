@@ -1,13 +1,12 @@
 {
-  "name": "link-shortener",
+  "name": "linkshort",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "node --test src/**/*.test.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module"
+  "dependencies": {
+    "pg": "^8.13.3"
+  }
 }

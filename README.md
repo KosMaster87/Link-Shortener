@@ -28,12 +28,21 @@
 
 ```text
 link-shortener/
+├── server.js            # HTTP server entry point
 ├── src/
-│   ├── routes/          # API endpoints
-│   ├── db/              # Database models & migrations
-│   └── index.js         # Entry point
-├── public/              # Frontend (HTML, CSS, JS)
-├── .env.example         # Environment variables (template)
+│   ├── routes/          # Route handlers (HTTP layer)
+│   │   ├── links.js     # POST /api/links, GET /api/links
+│   │   ├── redirect.js  # GET /:slug (redirect)
+│   │   └── analytics.js # GET /api/analytics/:linkId
+│   ├── services/        # Business logic
+│   │   ├── link-service.js
+│   │   └── analytics-service.js
+│   ├── db/              # Database
+│   │   ├── schema.sql   # CREATE TABLE statements
+│   │   └── index.js     # pg Pool setup
+│   └── utils/
+│       └── result.js    # ok() / err() helpers
+├── public/              # Static frontend files
 ├── package.json
 └── README.md
 ```
@@ -55,18 +64,19 @@ npm start
 Requirements:
 
 - Node.js ≥ 20
-- PostgreSQL (local or Docker)
+- PostgreSQL (local or Docker) – see [Day 2 setup](https://nodejs.org)
 
 ---
 
 ## 📅 Course Progress
 
-| Day   | Topic                        | Status |
-| ----- | ---------------------------- | ------ |
-| Day 0 | Setup & Project Definition   | ✅     |
-| Day 1 | CLAUDE.md & Architecture     | ⬜     |
-| Day 2 | PostgreSQL & Database Schema | ⬜     |
-| ...   | ...                          | ...    |
+| Day   | Topic                                    | Status |
+| ----- | ---------------------------------------- | ------ |
+| Day 0 | Setup & Project Definition               | ✅     |
+| Day 1 | CLAUDE.md & Project Configuration        | ✅     |
+| Day 2 | Architecture, Database & Server Skeleton | ✅     |
+| Day 3 | First Feature: URL Shortening            | ⬜     |
+| ...   | ...                                      | ...    |
 
 ---
 
