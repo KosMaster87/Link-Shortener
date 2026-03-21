@@ -31,9 +31,9 @@ link-shortener/
 ├── server.js            # HTTP server entry point
 ├── src/
 │   ├── routes/          # Route handlers (HTTP layer)
-│   │   ├── links.js     # POST /api/links, GET /api/links
-│   │   ├── redirect.js  # GET /:slug (redirect)
-│   │   └── analytics.js # GET /api/analytics/:linkId
+│   │   ├── links.js     # GET /api/links, POST /api/links, DELETE /api/links/:code
+│   │   ├── redirect.js  # GET /:code (redirect)
+│   │   └── analytics.js # GET /api/links/:code/clicks
 │   ├── services/        # Business logic
 │   │   ├── link-service.js
 │   │   └── analytics-service.js
@@ -75,7 +75,8 @@ Requirements:
 | Day 0 | Setup & Project Definition               | ✅     |
 | Day 1 | CLAUDE.md & Project Configuration        | ✅     |
 | Day 2 | Architecture, Database & Server Skeleton | ✅     |
-| Day 3 | First Feature: URL Shortening            | ⬜     |
+| Day 3 | First Feature: URL Shortening            | ✅     |
+| Day 4 | Iteration & Refactoring                  | ✅     |
 | ...   | ...                                      | ...    |
 
 ---

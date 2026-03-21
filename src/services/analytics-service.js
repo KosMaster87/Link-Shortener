@@ -32,7 +32,9 @@ const toClick = (row) => ({
 });
 
 /**
- * Speichert einen Klick-Eintrag für einen Short-Link.
+ * Schreibt einen Klick-Eintrag für den Short-Link in die DB.
+ * referrer und userAgent werden als null gespeichert wenn sie im Request fehlen.
+ * Gibt immer ein leeres ok() zurück — Fehler beim Tracking werden nicht propagiert.
  * @param {import("./analytics-service.js").RecordClickInput} input - Code, Referrer und User-Agent
  * @returns {Promise<{ success: true, data: undefined }>}
  */
@@ -45,7 +47,9 @@ export const recordClick = async ({ code, referrer, userAgent }) => {
 };
 
 /**
- * Liest alle Klicks für einen Short-Link, absteigend nach Zeitpunkt sortiert.
+ * Lädt alle Klicks für den Short-Link mit dem gegebenen Code aus der DB,
+ * absteigend nach Klick-Zeitpunkt sortiert. Gibt leeres Array zurück
+ * wenn der Link noch keine Klicks hat oder der Code nicht existiert.
  * @param {string} code - Slug des Short-Links
  * @returns {Promise<{ success: true, data: import("./analytics-service.js").Click[] }>}
  */

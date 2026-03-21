@@ -21,7 +21,9 @@ const MIME_TYPES = {
 };
 
 /**
- * Liest den Request-Body und parst ihn als JSON.
+ * Liest den Request-Body als String und parst ihn als JSON.
+ * Gibt ein leeres Objekt zurück wenn der Body fehlt oder kein gültiges JSON ist —
+ * wirft nie einen Fehler.
  * @param {import("node:http").IncomingMessage} req - Eingehender HTTP-Request
  * @returns {Promise<Object>} Geparster Body oder leeres Objekt bei Parse-Fehler
  */
@@ -41,7 +43,9 @@ const parseBody = (req) =>
   });
 
 /**
- * Liefert eine statische Datei aus dem public/-Verzeichnis.
+ * Liest eine Datei aus public/ und sendet sie mit passendem Content-Type.
+ * "/" wird auf "/index.html" umgeleitet. Antwortet mit 404 wenn die
+ * Datei nicht existiert.
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {string} urlPath - URL-Pfad der angeforderten Datei
  * @returns {Promise<void>}
@@ -60,7 +64,8 @@ const serveStatic = async (res, urlPath) => {
 };
 
 /**
- * Sendet eine generische 404-JSON-Antwort.
+ * Sendet { error: "NOT_FOUND" } mit Status 404 als JSON-Antwort.
+ * Wird für unbekannte API-Routen und nicht erlaubte Methoden verwendet.
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @returns {void}
  */
@@ -70,7 +75,11 @@ const send404 = (res) => {
 };
 
 /**
- * Verarbeitet API-Routen unter /api/.
+ * Routet Anfragen unter /api/ an den passenden Handler:
+ * GET|POST /api/links → handleLinks,
+ * DELETE /api/links/:code → handleLinks mit Code,
+ * GET /api/links/:code/clicks → handleAnalytics.
+ * Alle anderen Pfade oder Methoden antworten mit 404.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @param {string} method - HTTP-Methode
@@ -90,7 +99,9 @@ const routeApi = async (req, res, method, path) => {
 };
 
 /**
- * Verarbeitet GET-Routen für Weiterleitungen und statische Dateien.
+ * Routet GET-Anfragen: ein 6-stelliger alphanumerischer Pfad wird als
+ * Short-Code interpretiert und an handleRedirect übergeben.
+ * Alle anderen Pfade werden als statische Datei aus public/ bedient.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @param {string} path - URL-Pfad
@@ -103,7 +114,9 @@ const routeGet = async (req, res, path) => {
 };
 
 /**
- * Dispatcht einen eingehenden Request an den passenden Handler.
+ * Einstiegspunkt für jeden Request: parst den Body bei POST/PUT,
+ * leitet /api/*-Pfade an routeApi weiter, GET-Anfragen an routeGet.
+ * Alle anderen Methoden auf Nicht-API-Pfaden antworten mit 404.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @returns {Promise<void>}

@@ -8,7 +8,8 @@ import { recordClick } from "../services/analytics-service.js";
 import { getLink } from "../services/link-service.js";
 
 /**
- * Sendet eine JSON-Antwort.
+ * Serialisiert data als JSON und sendet die Response mit dem gegebenen Status.
+ * Setzt Content-Type auf application/json.
  * @param {import("node:http").ServerResponse} res
  * @param {number} status - HTTP-Statuscode
  * @param {*} data - Zu serialisierendes Payload
@@ -20,7 +21,9 @@ const send = (res, status, data) => {
 };
 
 /**
- * Leitet einen Short-Link-Aufruf zur Original-URL weiter und trackt den Klick.
+ * Löst einen Short-Code zur Original-URL auf und sendet einen 302-Redirect.
+ * Zeichnet dabei Referrer und User-Agent als Klick-Ereignis auf.
+ * Schlägt mit 404 fehl wenn kein Link mit dem Code existiert.
  * @param {import("node:http").IncomingMessage} req - HTTP-Request
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {{ code: string }} params - Route-Parameter mit dem Link-Code

@@ -7,7 +7,9 @@
 import { getClicksByCode } from "../services/analytics-service.js";
 
 /**
- * Liefert alle Klicks für einen gegebenen Short-Link-Code.
+ * Antwortet mit 200 und der Klick-Historie des Short-Links als Array,
+ * absteigend nach Klick-Zeitpunkt sortiert. Gibt leeres Array zurück
+ * wenn der Link noch keine Klicks hat.
  * @param {import("node:http").IncomingMessage} req - HTTP-Request
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {{ code: string }} params - Route-Parameter mit dem Link-Code

@@ -13,7 +13,8 @@ import {
 const ERROR_STATUS = { INVALID_URL: 422, SLUG_TAKEN: 409, NOT_FOUND: 404 };
 
 /**
- * Sendet eine JSON-Antwort mit dem angegebenen Status-Code.
+ * Serialisiert data als JSON und sendet die Response mit dem gegebenen Status.
+ * Setzt Content-Type auf application/json.
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {number} status - HTTP-Statuscode
  * @param {*} data - Zu serialisierendes Payload
@@ -25,6 +26,8 @@ const send = (res, status, data) => {
 };
 
 /**
+ * Lädt alle Short-Links aus der Datenbank und antwortet mit 200 und der Liste.
+ * Gibt immer 200 zurück — auch wenn keine Links vorhanden sind (leeres Array).
  * @param {import("node:http").ServerResponse} res
  * @returns {Promise<void>}
  */
@@ -34,6 +37,9 @@ const handleGet = async (res) => {
 };
 
 /**
+ * Legt einen neuen Short-Link an und antwortet mit 201 und dem erstellten Link.
+ * Schlägt mit 422 fehl wenn die URL kein gültiges http/https-Format hat.
+ * Schlägt mit 409 fehl wenn der Alias bereits vergeben oder reserviert ist.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @returns {Promise<void>}
@@ -46,6 +52,8 @@ const handlePost = async (req, res) => {
 };
 
 /**
+ * Löscht den Short-Link mit dem gegebenen Code und antwortet mit 204.
+ * Schlägt mit 404 fehl wenn kein Link mit diesem Code in der DB existiert.
  * @param {import("node:http").ServerResponse} res
  * @param {string} code - Short-Link-Code
  * @returns {Promise<void>}
@@ -59,7 +67,8 @@ const handleDelete = async (res, code) => {
 };
 
 /**
- * Verarbeitet alle Link-Endpunkte (GET, POST, DELETE).
+ * Dispatcht GET /api/links, POST /api/links und DELETE /api/links/:code
+ * an die jeweiligen Handler. params.code wird nur bei DELETE benötigt.
  * @param {import("node:http").IncomingMessage} req - HTTP-Request
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {{ code?: string }} params - Route-Parameter (code nur bei DELETE)
