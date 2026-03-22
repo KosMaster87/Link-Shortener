@@ -90,19 +90,67 @@ describe("trackClick", () => {
   // BOT-FILTER: Klicks von bekannten Bots sollen nicht in die Statistik
   // einfließen. Wir prüfen, dass der Klick entweder gar nicht gespeichert
   // wird oder is_bot = true gesetzt ist – beides verhindert Verfälschung.
-  it("speichert Bot-Traffic nicht (Googlebot)", async () => {
-    const result = await trackClick({
+  it("markiert Googlebot als Bot (trifft 'bot'-Pattern)", async () => {
+    await trackClick({
       linkId: testCode,
       referrer: "https://google.com",
       userAgent: "Googlebot/2.1 (+http://www.google.com/bot.html)",
       ip: "66.249.64.1",
     });
 
-    // Bot-Klick gibt success zurück (kein Fehler), wird aber nicht gezählt
-    assert.equal(result.success, true);
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // TWITTERBOT: Marketing-Teams teilen Links auf Twitter. Der Preview-Bot
+  // von Twitter soll nicht als Klick zählen. "bot"-Pattern greift hier.
+  it("markiert Twitterbot als Bot", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://t.co",
+      userAgent: "Twitterbot/1.0",
+      ip: "199.16.156.1",
+    });
 
     const { rows } = await pool.query(
-      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND (is_bot = FALSE OR is_bot IS NULL)",
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // LINKEDINBOT: Gleicher Fall wie Twitter. "bot"-Pattern greift auch hier
+  // (LinkedInBot → toLowerCase → "linkedinbot" enthält "bot").
+  it("markiert LinkedInBot als Bot", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://linkedin.com",
+      userAgent: "LinkedInBot/1.0 (compatible; compatible; +http://www.linkedin.com)",
+      ip: "108.174.10.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // FACEBOOKEXTERNALHIT: Der Preview-Crawler von Facebook enthält "bot" NICHT
+  // im User-Agent. Das aktuelle BOT_PATTERNS greift hier nicht → roter Test.
+  it("markiert facebookexternalhit als Bot", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://facebook.com",
+      userAgent: "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+      ip: "66.220.149.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
       [testCode],
     );
     assert.equal(rows[0].total, 0);

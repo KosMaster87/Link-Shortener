@@ -41,11 +41,14 @@ const DIRECT = "Direct";
 // Bekannte Bot-Substring-Muster (lowercase). Ein User-Agent der einen dieser
 // Strings enthält, wird als Bot klassifiziert und nicht in die Statistik gezählt.
 //
-// TECH DEBT: "bot" ist ein breites Muster. Slackbot, Twitterbot und Facebot
-// sind Preview-Crawler von sozialen Netzwerken – in vielen Kontexten legitimer
-// Traffic, den man zählen möchte. Vor einer Entscheidung (zählen oder filtern?)
-// sollte echter Traffic analysiert werden. Bis dahin gilt: alle "bot"-Agents raus.
-const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners"];
+// Bekannte Preview-Bots von Social-Media-Plattformen und Suchmaschinen.
+// Twitterbot/LinkedInBot treffen "bot"; facebookexternalhit braucht ein
+// eigenes Pattern, da Facebook keinen "bot"-String im User-Agent verwendet.
+//
+// TECH DEBT: "bot" ist ein breites Muster. Slackbot und ähnliche App-Bots
+// könnten je nach Use-Case als legitimer Traffic gelten. Vor einer Erweiterung
+// der Allowlist sollte echter Traffic analysiert werden.
+const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners", "externalhit"];
 
 /**
  * Prüft ob ein User-Agent zu einem bekannten Bot gehört.
