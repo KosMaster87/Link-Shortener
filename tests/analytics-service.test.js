@@ -210,15 +210,21 @@ describe("getStats", () => {
   // TOTAL CLICKS: Wir speichern eine bekannte Anzahl Klicks und prüfen die
   // Summe. Getrennt von clicksByDay, damit ein Fehler in der GROUP BY-Logik
   // den Zähler-Test nicht maskiert.
+  // Zwei Klicks kommen von derselben IP – damit ist totalClicks=3, uniqueVisitors=2.
+  // Ohne diesen Unterschied wäre ein versehentlicher Vertausch der beiden Felder
+  // im Return-Objekt unsichtbar, weil beide Werte identisch wären.
   it("zählt totalClicks korrekt", async () => {
     await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
-    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip: "2.2.2.2" });
-    await trackClick({ linkId: testCode, referrer: "https://c.com", userAgent: "Mozilla/5.0", ip: "3.3.3.3" });
+    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
+    await trackClick({ linkId: testCode, referrer: "https://c.com", userAgent: "Mozilla/5.0", ip: "2.2.2.2" });
 
     const result = await getStats(testCode);
 
     assert.equal(result.success, true);
     assert.equal(result.data.totalClicks, 3);
+    // uniqueVisitors muss 2 sein – stellt sicher, dass totalClicks nicht
+    // versehentlich den unique-Wert zurückgibt.
+    assert.equal(result.data.uniqueVisitors, 2);
   });
 
   // TOP REFERRERS: Wir prüfen Sortierung und Aggregation. Zwei Klicks von
@@ -312,6 +318,10 @@ describe("getStats", () => {
     const referrers = result.data.topReferrers.map((r) => r.referrer);
     assert.ok(!referrers.includes("https://google.com"));
     assert.ok(referrers.includes("https://twitter.com"));
+    // clicksByDay darf nur den einen Human-Klick enthalten, nicht die Bot-Klicks.
+    // Dieser Query hat ein eigenes WHERE in queryStats – ohne expliziten Test
+    // würde ein fehlendes is_bot=FALSE dort unbemerkt bleiben.
+    assert.equal(result.data.clicksByDay[0].count, 1);
   });
 
   // FEHLERFALL: getStats für unbekannten Code gibt NOT_FOUND zurück.
