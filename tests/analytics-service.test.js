@@ -108,6 +108,25 @@ describe("trackClick", () => {
     assert.equal(rows[0].total, 0);
   });
 
+  // LEERER REFERRER → "Direct": Ein leerer String "" ist nicht null, aber
+  // semantisch identisch mit "kein Referrer". Ohne diesen Test wäre ein
+  // Refactor von `referrer || DIRECT` zu `referrer ?? DIRECT` ein silent
+  // breaking change – "" würde dann als eigener Referrer gespeichert.
+  it("speichert leeren Referrer ('') als 'Direct'", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: "",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      ip: "5.5.5.5",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT referrer FROM link_clicks WHERE code = $1",
+      [testCode],
+    );
+    assert.equal(rows[0].referrer, "Direct");
+  });
+
   // UNGÜLTIGE LINK-ID: Der Service soll prüfen, ob der Link existiert.
   // Ohne diese Prüfung würde ein DB-Constraint-Fehler nach oben blubbern
   // statt einen sauberen Result-Fehler zurückzugeben.
@@ -202,6 +221,49 @@ describe("getStats", () => {
     assert.equal(result.success, true);
     // 3 Klicks, aber nur 2 unterschiedliche IPs
     assert.equal(result.data.uniqueVisitors, 2);
+  });
+
+  // IP-HASH DETERMINISMUS: Gleiche IP muss immer denselben Hash erzeugen –
+  // das ist die stille Voraussetzung für COUNT(DISTINCT ip_hash). Ein Refactor
+  // zu randomBytes() würde alle uniqueVisitors-Tests bestehen lassen, aber die
+  // Semantik wäre kaputt. Wir prüfen direkt in der DB, nicht im Service.
+  it("erzeugt für gleiche IP immer denselben ip_hash", async () => {
+    const ip = "203.0.113.42";
+    await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip });
+    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip });
+
+    const { rows } = await pool.query(
+      "SELECT DISTINCT ip_hash FROM link_clicks WHERE code = $1",
+      [testCode],
+    );
+    // Zwei Klicks, eine IP → genau ein eindeutiger Hash
+    assert.equal(rows.length, 1);
+    // Hash hat SHA-256-Format: 64 Hex-Zeichen
+    assert.match(rows[0].ip_hash, /^[0-9a-f]{64}$/);
+  });
+
+  // BOT-KLICKS IN GETSTATS: trackClick markiert Bots mit is_bot=true.
+  // getStats filtert per is_bot=FALSE. Dieser Test prüft die Verbindung
+  // zwischen beiden Funktionen – ein fehlendes WHERE is_bot=FALSE in einer
+  // der Aggregat-Queries würde erst hier auffallen, nicht im trackClick-Test.
+  it("blendet Bot-Klicks aus allen getStats-Metriken aus", async () => {
+    const botAgent = "Googlebot/2.1 (+http://www.google.com/bot.html)";
+    const humanAgent = "Mozilla/5.0 (Windows NT 10.0)";
+
+    await trackClick({ linkId: testCode, referrer: "https://google.com", userAgent: botAgent, ip: "66.249.64.1" });
+    await trackClick({ linkId: testCode, referrer: "https://google.com", userAgent: botAgent, ip: "66.249.64.2" });
+    await trackClick({ linkId: testCode, referrer: "https://twitter.com", userAgent: humanAgent, ip: "1.2.3.4" });
+
+    const result = await getStats(testCode);
+
+    assert.equal(result.success, true);
+    // Nur der eine menschliche Klick darf zählen
+    assert.equal(result.data.totalClicks, 1);
+    assert.equal(result.data.uniqueVisitors, 1);
+    // Bot-Referrer darf nicht in topReferrers auftauchen
+    const referrers = result.data.topReferrers.map((r) => r.referrer);
+    assert.ok(!referrers.includes("https://google.com"));
+    assert.ok(referrers.includes("https://twitter.com"));
   });
 
   // FEHLERFALL: getStats für unbekannten Code gibt NOT_FOUND zurück.

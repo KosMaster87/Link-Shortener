@@ -40,6 +40,11 @@ const DIRECT = "Direct";
 
 // Bekannte Bot-Substring-Muster (lowercase). Ein User-Agent der einen dieser
 // Strings enthält, wird als Bot klassifiziert und nicht in die Statistik gezählt.
+//
+// TECH DEBT: "bot" ist ein breites Muster. Slackbot, Twitterbot und Facebot
+// sind Preview-Crawler von sozialen Netzwerken – in vielen Kontexten legitimer
+// Traffic, den man zählen möchte. Vor einer Entscheidung (zählen oder filtern?)
+// sollte echter Traffic analysiert werden. Bis dahin gilt: alle "bot"-Agents raus.
 const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners"];
 
 /**
@@ -117,6 +122,9 @@ const queryStats = async (code) => {
   const base = "FROM link_clicks WHERE code = $1 AND is_bot = FALSE";
   const [total, byDay, referrers, unique] = await Promise.all([
     pool.query(`SELECT COUNT(*)::int AS count ${base}`, [code]),
+    // TECH DEBT: Timezone ist hardcodiert auf UTC. Nutzer in UTC+1 sehen Klicks
+    // um 23:30 Ortszeit als nächsten Tag. Lösung: konfigurierbare Timezone pro
+    // Account oder per Request-Parameter – erst relevant wenn Nutzer das melden.
     pool.query(
       `SELECT TO_CHAR(clicked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
               COUNT(*)::int AS count
