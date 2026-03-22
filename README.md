@@ -77,6 +77,7 @@ Requirements:
 | Day 2 | Architecture, Database & Server Skeleton | ✅     |
 | Day 3 | First Feature: URL Shortening            | ✅     |
 | Day 4 | Iteration & Refactoring                  | ✅     |
+| Day 5 | Feature #2: TDD with Analytics Service   | ✅     |
 | ...   | ...                                      | ...    |
 
 ---
