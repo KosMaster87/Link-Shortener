@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "test-link-service": "node --test tests/link-service.test.js"
+    "test-link-service": "node --test tests/link-service.test.js",
+    "test-analytics-service": "node --test tests/analytics-service.test.js"
   },
   "dependencies": {
     "pg": "^8.13.3"

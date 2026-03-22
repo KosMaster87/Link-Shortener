@@ -1,62 +1,155 @@
 /**
- * @fileoverview Business Logic für Klick-Analytics
- * @description Speichert Klick-Ereignisse und liest die Klick-Historie
- *   eines Short-Links aus der Datenbank.
+ * @fileoverview Business Logic für Link-Analytics
+ * @description Speichert Klicks und aggregiert Statistiken pro Short-Link.
+ *   Bot-Traffic wird herausgefiltert. IPs werden vor der Speicherung gehasht.
  * @module src/services/analytics-service
  */
+import { createHash } from "node:crypto";
 import { pool } from "../db/index.js";
-import { ok } from "../utils/result.js";
+import { err, ok } from "../utils/result.js";
 
 /**
- * @typedef {Object} Click
- * @property {number}      id         - Auto-increment ID
- * @property {string}      code       - FK → Link.code
- * @property {Date}        clickedAt  - Zeitpunkt des Klicks
- * @property {string|null} referrer   - Herkunfts-URL (kann fehlen)
- * @property {string|null} userAgent  - Browser/Client-String (kann fehlen)
+ * @typedef {Object} ClickInput
+ * @property {string}      linkId    - Code des Short-Links
+ * @property {string|null} referrer  - Herkunfts-URL (null → "Direct")
+ * @property {string}      userAgent - Browser-/Bot-Identifikation
+ * @property {string}      ip        - Client-IP (wird gehasht gespeichert)
  */
 
 /**
- * @typedef {Object} RecordClickInput
- * @property {string}      code       - Slug des aufgerufenen Links
- * @property {string|null} referrer   - Aus Request-Header "Referer"
- * @property {string|null} userAgent  - Aus Request-Header "User-Agent"
+ * @typedef {Object} DayCount
+ * @property {string} date  - Datum im Format YYYY-MM-DD
+ * @property {number} count - Anzahl Klicks an diesem Tag
  */
-
-const toClick = (row) => ({
-  id: row.id,
-  code: row.code,
-  clickedAt: row.clicked_at,
-  referrer: row.referrer,
-  userAgent: row.user_agent,
-});
 
 /**
- * Schreibt einen Klick-Eintrag für den Short-Link in die DB.
- * referrer und userAgent werden als null gespeichert wenn sie im Request fehlen.
- * Gibt immer ein leeres ok() zurück — Fehler beim Tracking werden nicht propagiert.
- * @param {import("./analytics-service.js").RecordClickInput} input - Code, Referrer und User-Agent
- * @returns {Promise<{ success: true, data: undefined }>}
+ * @typedef {Object} ReferrerCount
+ * @property {string} referrer - Herkunfts-URL oder "Direct"
+ * @property {number} count    - Anzahl Klicks von diesem Referrer
  */
-export const recordClick = async ({ code, referrer, userAgent }) => {
-  await pool.query(
-    "INSERT INTO link_clicks (code, referrer, user_agent) VALUES ($1, $2, $3)",
-    [code, referrer ?? null, userAgent ?? null],
+
+/**
+ * @typedef {Object} Stats
+ * @property {number}          totalClicks    - Gesamtklicks (ohne Bots)
+ * @property {DayCount[]}      clicksByDay    - Klicks gruppiert nach Datum
+ * @property {ReferrerCount[]} topReferrers   - Referrer absteigend nach Anzahl
+ * @property {number}          uniqueVisitors - Anzahl eindeutiger ip_hashes
+ */
+
+const DIRECT = "Direct";
+
+// Bekannte Bot-Substring-Muster (lowercase). Ein User-Agent der einen dieser
+// Strings enthält, wird als Bot klassifiziert und nicht in die Statistik gezählt.
+const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners"];
+
+/**
+ * Prüft ob ein User-Agent zu einem bekannten Bot gehört.
+ * @param {string} userAgent
+ * @returns {boolean}
+ */
+const isBot = (userAgent) => {
+  const lower = userAgent.toLowerCase();
+  return BOT_PATTERNS.some((pattern) => lower.includes(pattern));
+};
+
+/**
+ * Erstellt einen SHA-256-Hash der IP-Adresse zur anonymisierten Speicherung.
+ * @param {string} ip
+ * @returns {string}
+ */
+const hashIp = (ip) => createHash("sha256").update(ip).digest("hex");
+
+/**
+ * Prüft ob ein Short-Link mit dem gegebenen Code in der DB existiert.
+ * @param {string} code
+ * @returns {Promise<boolean>}
+ */
+const linkExists = async (code) => {
+  const { rows } = await pool.query(
+    "SELECT code FROM short_links WHERE code = $1",
+    [code],
   );
+  return rows.length > 0;
+};
+
+/**
+ * Schreibt einen Klick in die DB.
+ * @param {string}  code
+ * @param {string}  referrer
+ * @param {string}  userAgent
+ * @param {string}  ipHash
+ * @param {boolean} bot
+ * @returns {Promise<void>}
+ */
+const insertClick = async (code, referrer, userAgent, ipHash, bot) => {
+  await pool.query(
+    `INSERT INTO link_clicks (code, referrer, user_agent, ip_hash, is_bot)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [code, referrer, userAgent, ipHash, bot],
+  );
+};
+
+/**
+ * Speichert einen Klick für den angegebenen Short-Link.
+ * Gibt NOT_FOUND zurück wenn kein Link mit linkId existiert.
+ * Bot-Klicks werden als is_bot=true gespeichert und von getStats ignoriert.
+ * Ein fehlender Referrer wird als "Direct" gespeichert.
+ * Die IP-Adresse wird als SHA-256-Hash gespeichert, nie im Klartext.
+ * @param {ClickInput} input
+ * @returns {Promise<{ success: true, data: undefined } | { success: false, error: string }>}
+ */
+export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
+  if (!(await linkExists(linkId))) return err("NOT_FOUND");
+  const safeReferrer = referrer || DIRECT;
+  const ipHash = hashIp(ip);
+  const bot = isBot(userAgent);
+  await insertClick(linkId, safeReferrer, userAgent, ipHash, bot);
   return ok();
 };
 
 /**
- * Lädt alle Klicks für den Short-Link mit dem gegebenen Code aus der DB,
- * absteigend nach Klick-Zeitpunkt sortiert. Gibt leeres Array zurück
- * wenn der Link noch keine Klicks hat oder der Code nicht existiert.
- * @param {string} code - Slug des Short-Links
- * @returns {Promise<{ success: true, data: import("./analytics-service.js").Click[] }>}
+ * Führt alle Aggregat-Abfragen für einen Link parallel aus.
+ * Bots werden über is_bot=FALSE ausgeschlossen.
+ * @param {string} code
+ * @returns {Promise<Stats>}
  */
-export const getClicksByCode = async (code) => {
-  const result = await pool.query(
-    "SELECT * FROM link_clicks WHERE code = $1 ORDER BY clicked_at DESC",
-    [code],
-  );
-  return ok(result.rows.map(toClick));
+const queryStats = async (code) => {
+  const base = "FROM link_clicks WHERE code = $1 AND is_bot = FALSE";
+  const [total, byDay, referrers, unique] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS count ${base}`, [code]),
+    pool.query(
+      `SELECT TO_CHAR(clicked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+              COUNT(*)::int AS count
+       ${base} GROUP BY date ORDER BY date DESC`,
+      [code],
+    ),
+    pool.query(
+      `SELECT referrer, COUNT(*)::int AS count
+       ${base} GROUP BY referrer ORDER BY count DESC`,
+      [code],
+    ),
+    pool.query(
+      `SELECT COUNT(DISTINCT ip_hash)::int AS count ${base}`,
+      [code],
+    ),
+  ]);
+  return {
+    totalClicks: total.rows[0].count,
+    clicksByDay: byDay.rows,
+    topReferrers: referrers.rows,
+    uniqueVisitors: unique.rows[0].count,
+  };
+};
+
+/**
+ * Gibt aggregierte Statistiken für einen Short-Link zurück.
+ * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * Bot-Klicks (is_bot=TRUE) fließen in keine Metrik ein.
+ * @param {string} code - Code des Short-Links
+ * @returns {Promise<{ success: true, data: Stats } | { success: false, error: string }>}
+ */
+export const getStats = async (code) => {
+  if (!(await linkExists(code))) return err("NOT_FOUND");
+  const stats = await queryStats(code);
+  return ok(stats);
 };
