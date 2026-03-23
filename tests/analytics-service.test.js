@@ -13,11 +13,8 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
+import { getStats, trackClick } from "../src/services/analytics-service.js";
 import { createLink } from "../src/services/link-service.js";
-import {
-  getStats,
-  trackClick,
-} from "../src/services/analytics-service.js";
 
 // Der Test-Link bleibt über alle Tests bestehen; Klicks werden in afterEach
 // bereinigt. Warum nicht beforeEach? Link-Erstellung hat eine DB-Roundtrip-
@@ -61,7 +58,10 @@ describe("trackClick", () => {
     );
     assert.equal(rows.length, 1);
     assert.equal(rows[0].referrer, "https://twitter.com/user/status/123");
-    assert.equal(rows[0].user_agent, "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)");
+    assert.equal(
+      rows[0].user_agent,
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)",
+    );
     // ip_hash muss gesetzt sein – aber nicht die originale IP
     assert.ok(rows[0].ip_hash);
     assert.notEqual(rows[0].ip_hash, "192.168.1.100");
@@ -128,7 +128,8 @@ describe("trackClick", () => {
     await trackClick({
       linkId: testCode,
       referrer: "https://linkedin.com",
-      userAgent: "LinkedInBot/1.0 (compatible; compatible; +http://www.linkedin.com)",
+      userAgent:
+        "LinkedInBot/1.0 (compatible; compatible; +http://www.linkedin.com)",
       ip: "108.174.10.1",
     });
 
@@ -145,7 +146,8 @@ describe("trackClick", () => {
     await trackClick({
       linkId: testCode,
       referrer: "https://facebook.com",
-      userAgent: "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+      userAgent:
+        "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
       ip: "66.220.149.1",
     });
 
@@ -191,6 +193,127 @@ describe("trackClick", () => {
   });
 });
 
+// ─── bot detection – Pattern-Coverage ────────────────────────────────────────
+
+// Jeder BOT_PATTERN-Eintrag braucht mindestens einen Test. "bot" und
+// "externalhit" sind durch Googlebot/facebookexternalhit oben bereits abgedeckt.
+// Dieser Block schließt die vier verbleibenden Pattern-Lücken.
+//
+// Außerdem: Case-Insensitivität und ein False-Positive-Test.
+// Warum False-Positive? Ein zu breites Pattern (z.B. "spider" trifft
+// "spider-man-fan.com" im Referrer, aber hier im UA) würde echten Traffic
+// ausblenden. Der Test stellt sicher, dass ein normaler Browser-UA nie geblockt wird.
+
+describe("bot detection – Pattern-Coverage", () => {
+  // "crawler"-Pattern: DataForSeo-Crawler ist ein SEO-Audit-Bot.
+  // Substring-Match greift auf "crawler" unabhängig von Position.
+  it("markiert DataForSeo-Crawler als Bot (trifft 'crawler'-Pattern)", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: "DataForSeo-Crawler/1.0 (+https://dataforseo.com)",
+      ip: "5.188.210.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // "spider"-Pattern: Sogou ist die meistgenutzte chinesische Suchmaschine.
+  // User-Agents dieser Bots enthalten oft "spider" statt "bot".
+  it("markiert Sogou Spider als Bot (trifft 'spider'-Pattern)", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent:
+        "Sogou web spider/4.0 (+http://www.sogou.com/docs/help/webmasters.htm#07)",
+      ip: "220.181.108.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // "slurp"-Pattern: Yahoo Search Crawler. "Slurp" kommt in keinem
+  // normalen Browser-UA vor – ein sehr gezieltes Pattern ohne False-Positive-Risiko.
+  it("markiert Yahoo! Slurp als Bot (trifft 'slurp'-Pattern)", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent:
+        "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+      ip: "72.30.198.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // "mediapartners"-Pattern: Google AdSense Crawler. Dieser Bot besucht
+  // Seiten, um Werbeanzeigen zu optimieren – kein echter Nutzer-Klick.
+  it("markiert Mediapartners-Google als Bot (trifft 'mediapartners'-Pattern)", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: "Mediapartners-Google/2.1",
+      ip: "66.249.90.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // CASE-INSENSITIVITÄT: Ein Refactor von toLowerCase() auf direkten
+  // String-Vergleich würde "GOOGLEBOT" nicht mehr filtern. Dieser Test
+  // schützt vor diesem stillen Regression-Risiko.
+  it("filtert Bot-User-Agent unabhängig von Groß-/Kleinschreibung", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: "GOOGLEBOT/2.1",
+      ip: "66.249.64.10",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    assert.equal(rows[0].total, 0);
+  });
+
+  // FALSE-POSITIVE-SCHUTZ: Ein typischer Chrome-UA enthält keines der
+  // Bot-Pattern. Würde ein neues Pattern wie ".*" oder "mozilla" ergänzt,
+  // fiele dieser Test sofort rot – bevor echter Traffic verloren geht.
+  it("zählt normalen Chrome-Browser-UA als echten Klick (kein Bot)", async () => {
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://google.com",
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      ip: "203.0.113.1",
+    });
+
+    const { rows } = await pool.query(
+      "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
+      [testCode],
+    );
+    // Echte Klicks müssen zählbar bleiben – Bot-Filter darf nicht überfiltern.
+    assert.equal(rows[0].total, 1);
+  });
+});
+
 // ─── getStats ─────────────────────────────────────────────────────────────────
 
 describe("getStats", () => {
@@ -214,9 +337,24 @@ describe("getStats", () => {
   // Ohne diesen Unterschied wäre ein versehentlicher Vertausch der beiden Felder
   // im Return-Objekt unsichtbar, weil beide Werte identisch wären.
   it("zählt totalClicks korrekt", async () => {
-    await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
-    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
-    await trackClick({ linkId: testCode, referrer: "https://c.com", userAgent: "Mozilla/5.0", ip: "2.2.2.2" });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://a.com",
+      userAgent: "Mozilla/5.0",
+      ip: "1.1.1.1",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://b.com",
+      userAgent: "Mozilla/5.0",
+      ip: "1.1.1.1",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://c.com",
+      userAgent: "Mozilla/5.0",
+      ip: "2.2.2.2",
+    });
 
     const result = await getStats(testCode);
 
@@ -230,9 +368,24 @@ describe("getStats", () => {
   // TOP REFERRERS: Wir prüfen Sortierung und Aggregation. Zwei Klicks von
   // twitter.com, einer von github.com – twitter muss an erster Stelle stehen.
   it("aggregiert topReferrers absteigend nach Anzahl", async () => {
-    await trackClick({ linkId: testCode, referrer: "https://twitter.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
-    await trackClick({ linkId: testCode, referrer: "https://twitter.com", userAgent: "Mozilla/5.0", ip: "2.2.2.2" });
-    await trackClick({ linkId: testCode, referrer: "https://github.com", userAgent: "Mozilla/5.0", ip: "3.3.3.3" });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://twitter.com",
+      userAgent: "Mozilla/5.0",
+      ip: "1.1.1.1",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://twitter.com",
+      userAgent: "Mozilla/5.0",
+      ip: "2.2.2.2",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://github.com",
+      userAgent: "Mozilla/5.0",
+      ip: "3.3.3.3",
+    });
 
     const result = await getStats(testCode);
 
@@ -247,8 +400,18 @@ describe("getStats", () => {
   // werden. Wir legen mehrere Klicks an – alle landen heute – und erwarten
   // genau einen Eintrag in clicksByDay.
   it("gruppiert clicksByDay nach Datum (ein Eintrag pro Tag)", async () => {
-    await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip: "1.1.1.1" });
-    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip: "2.2.2.2" });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://a.com",
+      userAgent: "Mozilla/5.0",
+      ip: "1.1.1.1",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://b.com",
+      userAgent: "Mozilla/5.0",
+      ip: "2.2.2.2",
+    });
 
     const result = await getStats(testCode);
 
@@ -266,9 +429,24 @@ describe("getStats", () => {
   // ändert, solange die Semantik (gleiche IP = 1 Visitor) stimmt.
   it("zählt uniqueVisitors anhand von ip_hash (gleiche IP = 1)", async () => {
     const sameIp = "192.168.0.1";
-    await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip: sameIp });
-    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip: sameIp });
-    await trackClick({ linkId: testCode, referrer: "https://c.com", userAgent: "Mozilla/5.0", ip: "10.0.0.5" });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://a.com",
+      userAgent: "Mozilla/5.0",
+      ip: sameIp,
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://b.com",
+      userAgent: "Mozilla/5.0",
+      ip: sameIp,
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://c.com",
+      userAgent: "Mozilla/5.0",
+      ip: "10.0.0.5",
+    });
 
     const result = await getStats(testCode);
 
@@ -283,8 +461,18 @@ describe("getStats", () => {
   // Semantik wäre kaputt. Wir prüfen direkt in der DB, nicht im Service.
   it("erzeugt für gleiche IP immer denselben ip_hash", async () => {
     const ip = "203.0.113.42";
-    await trackClick({ linkId: testCode, referrer: "https://a.com", userAgent: "Mozilla/5.0", ip });
-    await trackClick({ linkId: testCode, referrer: "https://b.com", userAgent: "Mozilla/5.0", ip });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://a.com",
+      userAgent: "Mozilla/5.0",
+      ip,
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://b.com",
+      userAgent: "Mozilla/5.0",
+      ip,
+    });
 
     const { rows } = await pool.query(
       "SELECT DISTINCT ip_hash FROM link_clicks WHERE code = $1",
@@ -304,9 +492,24 @@ describe("getStats", () => {
     const botAgent = "Googlebot/2.1 (+http://www.google.com/bot.html)";
     const humanAgent = "Mozilla/5.0 (Windows NT 10.0)";
 
-    await trackClick({ linkId: testCode, referrer: "https://google.com", userAgent: botAgent, ip: "66.249.64.1" });
-    await trackClick({ linkId: testCode, referrer: "https://google.com", userAgent: botAgent, ip: "66.249.64.2" });
-    await trackClick({ linkId: testCode, referrer: "https://twitter.com", userAgent: humanAgent, ip: "1.2.3.4" });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://google.com",
+      userAgent: botAgent,
+      ip: "66.249.64.1",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://google.com",
+      userAgent: botAgent,
+      ip: "66.249.64.2",
+    });
+    await trackClick({
+      linkId: testCode,
+      referrer: "https://twitter.com",
+      userAgent: humanAgent,
+      ip: "1.2.3.4",
+    });
 
     const result = await getStats(testCode);
 
