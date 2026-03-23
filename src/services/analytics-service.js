@@ -56,6 +56,7 @@ const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners", "ext
  * @returns {boolean}
  */
 const isBot = (userAgent) => {
+  if (!userAgent) return false;
   const lower = userAgent.toLowerCase();
   return BOT_PATTERNS.some((pattern) => lower.includes(pattern));
 };
@@ -89,6 +90,9 @@ const linkExists = async (code) => {
  * @param {boolean} bot
  * @returns {Promise<void>}
  */
+// TECH DEBT (#4): 5 positionale String-Parameter – bei einer Erweiterung (z.B.
+// country hinzufügen) ist stille Verwechslung möglich. Auf Objekt-Parameter
+// umstellen: insertClick({ code, referrer, userAgent, ipHash, isBot })
 const insertClick = async (code, referrer, userAgent, ipHash, bot) => {
   await pool.query(
     `INSERT INTO link_clicks (code, referrer, user_agent, ip_hash, is_bot)
@@ -108,6 +112,7 @@ const insertClick = async (code, referrer, userAgent, ipHash, bot) => {
  */
 export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
   if (!(await linkExists(linkId))) return err("NOT_FOUND");
+  if (!ip) return err("MISSING_IP");
   const safeReferrer = referrer || DIRECT;
   const ipHash = hashIp(ip);
   const bot = isBot(userAgent);
@@ -121,6 +126,12 @@ export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
  * @param {string} code
  * @returns {Promise<Stats>}
  */
+// TECH DEBT (#2/#5): queryStats überschreitet das 14-Zeilen-Limit (CLAUDE.md).
+// Jede Aggregat-Abfrage in eine eigene Funktion auslagern:
+//   const queryTotalClicks = (code) => pool.query(...)
+//   const queryClicksByDay  = (code) => pool.query(...)
+// Die base-Konstante wird dann zu einer expliziten Konstante NON_BOT_WHERE
+// statt per Template-Literal in 4 Queries injiziert zu werden.
 const queryStats = async (code) => {
   const base = "FROM link_clicks WHERE code = $1 AND is_bot = FALSE";
   const [total, byDay, referrers, unique] = await Promise.all([

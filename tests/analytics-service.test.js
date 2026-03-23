@@ -191,6 +191,43 @@ describe("trackClick", () => {
     assert.equal(result.success, false);
     assert.equal(result.error, "NOT_FOUND");
   });
+
+  // BUG #1 – NULL USER-AGENT: Requests ohne User-Agent-Header sind gültig
+  // (curl, programmatische Clients). isBot() darf nicht mit toLowerCase() auf
+  // null/undefined crashen – stattdessen wird der Klick als Nicht-Bot gezählt.
+  it("stürzt nicht ab wenn userAgent null ist", async () => {
+    const result = await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: null,
+      ip: "1.2.3.4",
+    });
+
+    assert.equal(result.success, true);
+  });
+
+  // BUG #3 – LEERE IP: Eine leere IP würde zu hashIp("") → immer demselben
+  // Hash führen. Alle Requests ohne IP wären dann ein einziger Unique Visitor –
+  // ein stiller Datenfehler der nie als Exception sichtbar wird.
+  it("gibt err('MISSING_IP') zurück wenn ip leer oder null ist", async () => {
+    const emptyIp = await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: "Mozilla/5.0",
+      ip: "",
+    });
+    const nullIp = await trackClick({
+      linkId: testCode,
+      referrer: null,
+      userAgent: "Mozilla/5.0",
+      ip: null,
+    });
+
+    assert.equal(emptyIp.success, false);
+    assert.equal(emptyIp.error, "MISSING_IP");
+    assert.equal(nullIp.success, false);
+    assert.equal(nullIp.error, "MISSING_IP");
+  });
 });
 
 // ─── bot detection – Pattern-Coverage ────────────────────────────────────────
