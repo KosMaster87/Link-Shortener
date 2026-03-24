@@ -38,6 +38,11 @@ import { err, ok } from "../utils/result.js";
 
 const DIRECT = "Direct";
 
+// Gemeinsame WHERE-Klausel für alle Stats-Queries: schließt Bots aus.
+// Als Modul-Konstante statt lokaler Variable, damit alle Query-Funktionen
+// dieselbe Bedingung teilen und ein Refactor an einer Stelle wirkt.
+const NON_BOT_WHERE = "FROM link_clicks WHERE code = $1 AND is_bot = FALSE";
+
 // Bekannte Bot-Substring-Muster (lowercase). Ein User-Agent der einen dieser
 // Strings enthält, wird als Bot klassifiziert und nicht in die Statistik gezählt.
 //
@@ -48,7 +53,14 @@ const DIRECT = "Direct";
 // TECH DEBT: "bot" ist ein breites Muster. Slackbot und ähnliche App-Bots
 // könnten je nach Use-Case als legitimer Traffic gelten. Vor einer Erweiterung
 // der Allowlist sollte echter Traffic analysiert werden.
-const BOT_PATTERNS = ["bot", "crawler", "spider", "slurp", "mediapartners", "externalhit"];
+const BOT_PATTERNS = [
+  "bot",
+  "crawler",
+  "spider",
+  "slurp",
+  "mediapartners",
+  "externalhit",
+];
 
 /**
  * Prüft ob ein User-Agent zu einem bekannten Bot gehört.
@@ -83,17 +95,16 @@ const linkExists = async (code) => {
 
 /**
  * Schreibt einen Klick in die DB.
- * @param {string}  code
- * @param {string}  referrer
- * @param {string}  userAgent
- * @param {string}  ipHash
- * @param {boolean} bot
+ * @param {{ code: string, referrer: string, userAgent: string, ipHash: string, isBot: boolean }} input
  * @returns {Promise<void>}
  */
-// TECH DEBT (#4): 5 positionale String-Parameter – bei einer Erweiterung (z.B.
-// country hinzufügen) ist stille Verwechslung möglich. Auf Objekt-Parameter
-// umstellen: insertClick({ code, referrer, userAgent, ipHash, isBot })
-const insertClick = async (code, referrer, userAgent, ipHash, bot) => {
+const insertClick = async ({
+  code,
+  referrer,
+  userAgent,
+  ipHash,
+  isBot: bot,
+}) => {
   await pool.query(
     `INSERT INTO link_clicks (code, referrer, user_agent, ip_hash, is_bot)
      VALUES ($1, $2, $3, $4, $5)`,
@@ -115,45 +126,74 @@ export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
   if (!ip) return err("MISSING_IP");
   const safeReferrer = referrer || DIRECT;
   const ipHash = hashIp(ip);
-  const bot = isBot(userAgent);
-  await insertClick(linkId, safeReferrer, userAgent, ipHash, bot);
+  await insertClick({
+    code: linkId,
+    referrer: safeReferrer,
+    userAgent,
+    ipHash,
+    isBot: isBot(userAgent),
+  });
   return ok();
 };
 
 /**
+ * Gibt die Gesamtzahl echter Klicks (ohne Bots) für einen Link zurück.
+ * @param {string} code
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryTotalClicks = (code) =>
+  pool.query(`SELECT COUNT(*)::int AS count ${NON_BOT_WHERE}`, [code]);
+
+/**
+ * Gibt Klickzahlen gruppiert nach Tag zurück, absteigend sortiert.
+ * TECH DEBT: Timezone ist hardcodiert auf UTC. Nutzer in UTC+1 sehen Klicks
+ * um 23:30 Ortszeit als nächsten Tag. Lösung: konfigurierbare Timezone pro
+ * Account oder per Request-Parameter – erst relevant wenn Nutzer das melden.
+ * @param {string} code
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryClicksByDay = (code) =>
+  pool.query(
+    `SELECT TO_CHAR(clicked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
+            COUNT(*)::int AS count
+     ${NON_BOT_WHERE} GROUP BY date ORDER BY date DESC`,
+    [code],
+  );
+
+/**
+ * Gibt Referrer aggregiert und absteigend nach Anzahl sortiert zurück.
+ * @param {string} code
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryReferrers = (code) =>
+  pool.query(
+    `SELECT referrer, COUNT(*)::int AS count
+     ${NON_BOT_WHERE} GROUP BY referrer ORDER BY count DESC`,
+    [code],
+  );
+
+/**
+ * Gibt die Anzahl eindeutiger Besucher anhand von ip_hash zurück.
+ * @param {string} code
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryUniqueVisitors = (code) =>
+  pool.query(`SELECT COUNT(DISTINCT ip_hash)::int AS count ${NON_BOT_WHERE}`, [
+    code,
+  ]);
+
+/**
  * Führt alle Aggregat-Abfragen für einen Link parallel aus.
- * Bots werden über is_bot=FALSE ausgeschlossen.
+ * Bots werden über NON_BOT_WHERE aus allen Metriken ausgeschlossen.
  * @param {string} code
  * @returns {Promise<Stats>}
  */
-// TECH DEBT (#2/#5): queryStats überschreitet das 14-Zeilen-Limit (CLAUDE.md).
-// Jede Aggregat-Abfrage in eine eigene Funktion auslagern:
-//   const queryTotalClicks = (code) => pool.query(...)
-//   const queryClicksByDay  = (code) => pool.query(...)
-// Die base-Konstante wird dann zu einer expliziten Konstante NON_BOT_WHERE
-// statt per Template-Literal in 4 Queries injiziert zu werden.
 const queryStats = async (code) => {
-  const base = "FROM link_clicks WHERE code = $1 AND is_bot = FALSE";
   const [total, byDay, referrers, unique] = await Promise.all([
-    pool.query(`SELECT COUNT(*)::int AS count ${base}`, [code]),
-    // TECH DEBT: Timezone ist hardcodiert auf UTC. Nutzer in UTC+1 sehen Klicks
-    // um 23:30 Ortszeit als nächsten Tag. Lösung: konfigurierbare Timezone pro
-    // Account oder per Request-Parameter – erst relevant wenn Nutzer das melden.
-    pool.query(
-      `SELECT TO_CHAR(clicked_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS date,
-              COUNT(*)::int AS count
-       ${base} GROUP BY date ORDER BY date DESC`,
-      [code],
-    ),
-    pool.query(
-      `SELECT referrer, COUNT(*)::int AS count
-       ${base} GROUP BY referrer ORDER BY count DESC`,
-      [code],
-    ),
-    pool.query(
-      `SELECT COUNT(DISTINCT ip_hash)::int AS count ${base}`,
-      [code],
-    ),
+    queryTotalClicks(code),
+    queryClicksByDay(code),
+    queryReferrers(code),
+    queryUniqueVisitors(code),
   ]);
   return {
     totalClicks: total.rows[0].count,

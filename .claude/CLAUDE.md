@@ -133,3 +133,22 @@ Service-Result direkt in HTTP-Status übersetzen via `ERROR_STATUS`-Map.
 Integrationstests gegen echte PostgreSQL-DB (keine Mocks). Muster: `tests/link-service.test.js`.
 `describe`/`it`-Struktur, `createdCodes`-Cleanup in `afterEach`, `assert.equal` für Fehlerfälle,
 `assert`-Chain für Erfolgsfälle. Kommentare erklären _warum_, nicht _was_.
+
+## Integration Patterns
+
+### Service-Kommunikation
+
+Services kommunizieren nicht direkt miteinander.
+Routes koordinieren den Flow und rufen Services auf.
+
+### Fire-and-Forget für Analytics
+
+Tracking darf den Hauptflow nicht blockieren oder abbrechen.
+Analytics-Calls werden mit .catch() abgefangen.
+Fehler werden geloggt, aber nicht weitergegeben.
+
+### Request-Daten extrahieren
+
+Referrer, User-Agent, IP werden in der Route aus dem Request extrahiert.
+Services bekommen diese Daten als Parameter, nicht den Request selbst.
+Das hält Services unabhängig vom HTTP-Layer.
