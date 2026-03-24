@@ -11,6 +11,7 @@ import { extname } from "node:path";
 import { handleAnalytics } from "./src/routes/analytics.js";
 import { handleLinks } from "./src/routes/links.js";
 import { handleRedirect } from "./src/routes/redirect.js";
+import { getStats } from "./src/services/analytics-service.js";
 
 const PORT = process.env.PORT ?? 3000;
 
@@ -75,11 +76,31 @@ const send404 = (res) => {
 };
 
 /**
+ * Lädt aggregierte Statistiken für einen Short-Link und antwortet mit 200 JSON.
+ * Schlägt mit 404 fehl wenn kein Link mit diesem Code existiert.
+ * Schlägt mit 500 fehl wenn die Stats-Abfrage fehlschlägt.
+ * @param {import("node:http").ServerResponse} res
+ * @param {string} slug - Short-Link-Code
+ * @returns {Promise<void>}
+ */
+const handleStats = async (res, slug) => {
+  const result = await getStats(slug);
+  if (!result.success && result.error === "NOT_FOUND") return send404(res);
+  if (!result.success) {
+    res.writeHead(500, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify({ error: "INTERNAL_ERROR" }));
+  }
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(result.data));
+};
+
+/**
  * Routet Anfragen unter /api/ an den passenden Handler:
  * GET|POST /api/links → handleLinks,
  * DELETE|PUT /api/links/:code → handleLinks mit Code,
  * PATCH /api/links/:code/toggle → handleLinks mit Code,
- * GET /api/links/:code/clicks → handleAnalytics.
+ * GET /api/links/:code/clicks → handleAnalytics,
+ * GET /api/links/:code/stats → handleStats.
  * Alle anderen Pfade oder Methoden antworten mit 404.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
@@ -99,6 +120,9 @@ const routeApi = async (req, res, method, path) => {
   const clicksMatch = path.match(/^\/api\/links\/([^/]+)\/clicks$/);
   if (method === "GET" && clicksMatch)
     return await handleAnalytics(req, res, { code: clicksMatch[1] });
+  const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
+  if (method === "GET" && statsMatch)
+    return await handleStats(res, statsMatch[1]);
   send404(res);
 };
 
