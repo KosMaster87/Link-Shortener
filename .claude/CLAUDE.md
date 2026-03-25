@@ -2,153 +2,65 @@
 
 ## Projekt-Übersicht
 
-**Name:** LinkShort
-**Typ:** Mini-SaaS (API + statisches Web-Frontend)
-**Zweck:** URL-Shortener mit Klick-Analytics und Dashboard
-**Zielgruppe:** Marketing-Teams, Content-Creator, Blogger
-
-Der Service erstellt kurze Links (z.B. lnk.sh/abc123), trackt jeden Klick
-und zeigt Statistiken im Dashboard an.
+**LinkShort** — URL-Shortener Mini-SaaS mit Klick-Analytics und Dashboard (lnk.sh/abc123).
 
 ## Tech-Stack
 
-**Sprache:** JavaScript (ES2024, ESM)
-**Runtime:** Node.js 24 LTS
-**Package Manager:** npm
-
-**Backend:**
-
-- node:http (nativer HTTP-Server)
-- pg (PostgreSQL Client, Raw SQL)
-
-**Frontend:**
-
-- Statisches HTML + CSS + Vanilla JS
-
-**Testing:**
-
-- node:test + node:assert
+- **JS:** ES2024, ESM, Node.js 24 LTS, npm
+- **Backend:** node:http, pg (Raw SQL)
+- **Frontend:** Statisches HTML + CSS + Vanilla JS
+- **Testing:** node:test + node:assert
 
 ## Projektstruktur
 
-- `server.js` - HTTP Server Entry Point
-- `src/`
-  - `routes/` - Route Handler (HTTP-Schicht)
-  - `services/` - Business Logic
-  - `db/` - Schema + pg Pool Setup
-  - `utils/` - Helper (result.js: ok/err)
-- `public/` - Statische Dateien (HTML, CSS, JS)
-- `tests/` - Tests (node:test)
-
-## Architektur-Entscheidungen
-
-### Routes und Services getrennt
-
-Routes kennen HTTP, Services nur Business Logic.
-Vorteil: Services sind isoliert testbar.
-
-### Flache Struktur
-
-Keine tiefen Verschachtelungen. Ordner werden
-erst aufgeteilt, wenn sie zu groß werden.
+- `server.js` — HTTP Server Entry Point
+- `src/routes/` — Route Handler (HTTP-Schicht)
+- `src/services/` — Business Logic
+- `src/db/` — Schema + pg Pool Setup
+- `src/utils/` — Helper (result.js: ok/err)
+- `public/` — Statische Dateien
+- `tests/` — Tests
 
 ## Datenbank
 
-- **DB:** PostgreSQL, Datenbank: `linkshort`
-- **Verbindung:** Unix-Socket `/var/run/postgresql` (peer-Auth, kein Passwort nötig)
-- **DB-User:** `dev2k` (PostgreSQL Superuser)
-- **Starten:** `npm start` in `link-shortener/`
+- PostgreSQL, DB: `linkshort`
+- Unix-Socket `/var/run/postgresql` (peer-Auth, kein Passwort)
+- DB-User: `dev2k` (Superuser)
+- Starten: `npm start`
 
 ## Coding-Konventionen
 
-### Naming
-
-- Dateien: kebab-case (link-service.js)
-- Funktionen: camelCase (createShortLink)
-- DB-Tabellen: snake_case (short_links, link_clicks)
-
-### JavaScript
-
-- ESM Module (import/export)
-- Named Exports bevorzugen
+- Dateien: kebab-case | Funktionen: camelCase | DB-Tabellen: snake_case
+- ESM, Named Exports bevorzugen
+- Routes kennen HTTP, Services kennen nur Business Logic
+- Services kommunizieren nicht direkt — Routes koordinieren den Flow
 
 ## Function Rules
 
-- Eine Aufgabe pro Funktion
-- Maximum 14 Zeilen pro Funktion
-- Keine verschachtelten Funktionen – in separate Funktionen auslagern
-- Komplexe Logik in Helper-Funktionen aufteilen
+- Eine Aufgabe pro Funktion, max. 14 Zeilen
+- Keine verschachtelten Funktionen — in separate auslagern
 - Arrow Functions bevorzugen
-- JSDoc-Typen für alle Parameter und Rückgabewerte (ersetzt TypeScript-Typen)
-- Beschreibende Namen: kurz und präzise (3–5 Wörter max)
-- camelCase: createShortLink, nicht Create_Short_Link
-- Keine Magic Numbers – benannte Konstanten verwenden
-  (Beispiel: const MAX_SLUG_ATTEMPTS = 3, nicht die Zahl 3 direkt im Code)
+- JSDoc: `@param` + `@returns` für alle exports, `@fileoverview` Header pro Datei
+- Typedef-Kommentare im Service der sie verwendet
+- Namen: 3–5 Wörter, camelCase
+- Keine Magic Numbers — benannte Konstanten (`MAX_SLUG_ATTEMPTS = 3`)
 
 ## File Size Limits
 
 - Funktionen: max. 14 Zeilen
-- Modulare Services: max. 100 LOC
-- Allgemeine Dateien: max. 400 LOC
+- Services: max. 100 LOC
+- Dateien: max. 400 LOC
 
-### Error Handling
+## Error Handling
 
-- Result-Objekte statt Exceptions:
-  { success: true, data } | { success: false, error: "..." }
-- Services geben immer Result zurück
-- Routes wandeln Result in HTTP Response um
-
-## JSDoc-Dokumentation
-
-Jede Datei beginnt mit @fileoverview Header.
-Jede exportierte Funktion hat @param und @returns.
-Typedef-Kommentare leben im Service der sie verwendet.
-JSDoc beschreibt konkretes Verhalten: was die Funktion tut, welche Fehler-Codes
-sie zurückgibt und unter welchen Bedingungen.
+- `ok(data)` / `err("...")` aus `src/utils/result.js` — nie manuell `{ success: true/false }` bauen
+- Services geben immer Result zurück, Routes übersetzen via `ERROR_STATUS`-Map in HTTP-Status
+- Error Messages mit Kontext: `"Invalid URL: must start with http://. Received: ftp://example.com"`
 
 ## Code Patterns
 
-### Result-Objekte
-
-Alle Services nutzen `ok()` und `err()` aus `src/utils/result.js`.
-Nie manuell `{ success: true/false }` bauen, immer die Helper verwenden.
-
-### Services
-
-Alle Services folgen dem Aufbau in `src/services/link-service.js`:
-`ok()`/`err()` statt throw, Validierung am Anfang, frühe Returns.
-
-### Error Handling
-
-Error Messages enthalten Kontext + was falsch gelaufen ist:
-`"Invalid URL: must start with http:// or https://. Received: ftp://example.com"`
-
-### Routes
-
-Routes kennen nur HTTP — kein Business Logic. Muster: `src/routes/links.js`.
-Service-Result direkt in HTTP-Status übersetzen via `ERROR_STATUS`-Map.
-
-### Tests
-
-Integrationstests gegen echte PostgreSQL-DB (keine Mocks). Muster: `tests/link-service.test.js`.
-`describe`/`it`-Struktur, `createdCodes`-Cleanup in `afterEach`, `assert.equal` für Fehlerfälle,
-`assert`-Chain für Erfolgsfälle. Kommentare erklären _warum_, nicht _was_.
-
-## Integration Patterns
-
-### Service-Kommunikation
-
-Services kommunizieren nicht direkt miteinander.
-Routes koordinieren den Flow und rufen Services auf.
-
-### Fire-and-Forget für Analytics
-
-Tracking darf den Hauptflow nicht blockieren oder abbrechen.
-Analytics-Calls werden mit .catch() abgefangen.
-Fehler werden geloggt, aber nicht weitergegeben.
-
-### Request-Daten extrahieren
-
-Referrer, User-Agent, IP werden in der Route aus dem Request extrahiert.
-Services bekommen diese Daten als Parameter, nicht den Request selbst.
-Das hält Services unabhängig vom HTTP-Layer.
+- **Services:** Validierung am Anfang, frühe Returns. Muster: `src/services/link-service.js`
+- **Routes:** Nur HTTP, kein Business Logic. Muster: `src/routes/links.js`
+- **Analytics:** Fire-and-forget mit `.catch()` — Fehler loggen, nicht weitergeben
+- **Request-Daten:** Referrer, User-Agent, IP in der Route extrahieren, als Parameter übergeben
+- **Tests:** Echte PostgreSQL-DB (keine Mocks), `describe`/`it`, `createdCodes`-Cleanup in `afterEach`. Muster: `tests/link-service.test.js`
