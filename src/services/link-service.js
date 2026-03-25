@@ -194,6 +194,30 @@ export const updateLink = async (code, url) => {
 };
 
 /**
+ * Gibt alle Short-Links zurück, die in den letzten `days` Tagen keinen Klick hatten.
+ * Berücksichtigt auch Links ohne Klick-Einträge (LEFT JOIN).
+ * Gibt INVALID_DAYS zurück wenn `days` keine positive ganze Zahl ist.
+ * @param {number} days - Zeitraum in Tagen (muss > 0 sein)
+ * @returns {Promise<{ success: true, data: import("./link-service.js").Link[] } | { success: false, error: string }>}
+ */
+export const getInactiveLinks = async (days) => {
+  if (!Number.isInteger(days) || days <= 0) return err("INVALID_DAYS");
+  const start = performance.now();
+  const { rows } = await pool.query(
+    `SELECT sl.* FROM short_links sl
+     LEFT JOIN link_clicks lc
+       ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
+     GROUP BY sl.code
+     HAVING MAX(lc.clicked_at) IS NULL
+     ORDER BY sl.created_at DESC`,
+    [days],
+  );
+  const ms = (performance.now() - start).toFixed(2);
+  console.log(`[getInactiveLinks] days=${days} found=${rows.length} duration=${ms}ms`);
+  return ok(rows.map(toLink));
+};
+
+/**
  * Schaltet is_active eines Short-Links um (true → false, false → true).
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * @param {string} code - 6-stelliger alphanumerischer Slug
