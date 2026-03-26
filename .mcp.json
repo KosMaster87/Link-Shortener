@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "db": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL:-postgresql://localhost/linkshort}"
+      ],
+      "transport": "stdio"
+    }
+  }
+}

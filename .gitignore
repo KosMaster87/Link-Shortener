@@ -9,6 +9,9 @@ package-lock.json
 
 # Environment files
 config/firebase.config.js
+.env
+.env.local
+.env.*.local
 
 # IDE/Editor
 .vscode/
