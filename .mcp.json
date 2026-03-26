@@ -5,7 +5,7 @@
       "args": [
         "-y",
         "@modelcontextprotocol/server-postgres",
-        "${DATABASE_URL:-postgresql://localhost/linkshort}"
+        "${DATABASE_URL:-postgresql:///linkshort?host=/var/run/postgresql}"
       ],
       "transport": "stdio"
     }
