@@ -14,11 +14,19 @@ import { pool } from "../src/db/index.js";
 
 const BASE = "http://localhost:3000";
 
+// Sammelt Codes der in diesem Lauf erstellten Links – afterEach räumt nur
+// diese weg. Kein globales DELETE: npm test läuft parallel, ein globales
+// DELETE FROM short_links würde Daten anderer Test-Dateien löschen und
+// dort FK-Violations oder fehlerhafte Zählungen verursachen.
+const createdCodes = [];
+
 afterEach(async () => {
-  // Vollständige DB-Bereinigung vor jedem Test – kein Link-State überlebt.
-  // Reihenfolge matters: link_clicks referenziert short_links via FK.
-  await pool.query("DELETE FROM link_clicks");
-  await pool.query("DELETE FROM short_links");
+  if (createdCodes.length === 0) return;
+  // ON DELETE CASCADE löscht link_clicks automatisch mit.
+  await pool.query("DELETE FROM short_links WHERE code = ANY($1)", [
+    createdCodes,
+  ]);
+  createdCodes.length = 0;
 });
 
 after(async () => {
@@ -38,6 +46,7 @@ describe("GET /{code} – Redirect", () => {
       body: JSON.stringify({ url: "https://example.com/target" }),
     });
     const { code } = await createRes.json();
+    createdCodes.push(code);
 
     const redirectRes = await fetch(`${BASE}/${code}`, { redirect: "manual" });
 
@@ -72,6 +81,7 @@ describe("GET /{code} – Redirect", () => {
       body: JSON.stringify({ url: "https://example.com/bot-test" }),
     });
     const { code } = await createRes.json();
+    createdCodes.push(code);
 
     await fetch(`${BASE}/${code}`, {
       redirect: "manual",
@@ -95,6 +105,7 @@ describe("GET /{code} – Redirect", () => {
       body: JSON.stringify({ url: "https://example.com/multi" }),
     });
     const { code } = await createRes.json();
+    createdCodes.push(code);
 
     for (let i = 0; i < 5; i++) {
       await fetch(`${BASE}/${code}`, { redirect: "manual" });

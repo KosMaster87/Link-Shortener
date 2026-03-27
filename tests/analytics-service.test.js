@@ -11,28 +11,31 @@
  * @module tests/analytics-service.test
  */
 import assert from "node:assert/strict";
-import { after, afterEach, before, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
 import { getStats, trackClick } from "../src/services/analytics-service.js";
 import { createLink } from "../src/services/link-service.js";
 
-// Der Test-Link bleibt über alle Tests bestehen; Klicks werden in afterEach
-// bereinigt. Warum nicht beforeEach? Link-Erstellung hat eine DB-Roundtrip-
-// Kosten – einmal reicht, solange ON DELETE CASCADE die Klicks löscht.
+// Isolation: Jeder Test bekommt seinen eigenen Link via beforeEach.
+// Warum nicht before()? npm test führt alle Test-Dateien parallel aus.
+// e2e-redirect.test.js bereinigt in afterEach die gesamte short_links-Tabelle –
+// ein shared testCode würde mitten in einem analytics-Test gelöscht werden
+// → FK-Violation im nächsten trackClick-Aufruf.
+// Mit beforeEach/afterEach ist jeder Test vollständig in sich geschlossen.
 let testCode;
 
-before(async () => {
+beforeEach(async () => {
   const result = await createLink({ url: "https://example.com/analytics" });
   testCode = result.data.code;
 });
 
 afterEach(async () => {
-  // Klicks löschen, Link bleibt stehen – so startet jeder Test mit 0 Klicks.
+  // ON DELETE CASCADE löscht link_clicks automatisch mit – explizit für Klarheit.
   await pool.query("DELETE FROM link_clicks WHERE code = $1", [testCode]);
+  await pool.query("DELETE FROM short_links WHERE code = $1", [testCode]);
 });
 
 after(async () => {
-  await pool.query("DELETE FROM short_links WHERE code = $1", [testCode]);
   await pool.end();
 });
 
