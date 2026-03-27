@@ -64,3 +64,13 @@
 - **Analytics:** Fire-and-forget mit `.catch()` — Fehler loggen, nicht weitergeben
 - **Request-Daten:** Referrer, User-Agent, IP in der Route extrahieren, als Parameter übergeben
 - **Tests:** Echte PostgreSQL-DB (keine Mocks), `describe`/`it`, `createdCodes`-Cleanup in `afterEach`. Muster: `tests/link-service.test.js`
+
+## Dashboard-Queries - Bekannte Risiken
+
+| Risiko                                                                                               | Kategorie              | Lösung                                                                                                                      |
+| ---------------------------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Kein Index auf `link_clicks.code` und `link_clicks.clicked_at`                                       | Performance            | `CREATE INDEX idx_link_clicks_code ON link_clicks(code);` + `CREATE INDEX idx_link_clicks_time ON link_clicks(clicked_at);` |
+| `clicked_at` ist TIMESTAMPTZ (UTC) — `DATE_TRUNC` ohne `AT TIME ZONE` liefert UTC-Tage, nicht lokale | Zeitzone               | Immer explizit `AT TIME ZONE 'UTC'` oder `AT TIME ZONE 'Europe/Berlin'` für deutsche User                                   |
+| `is_bot = FALSE` ist DEFAULT — alle Testklicks sind `false`, auch ohne UA-Check                      | Edge Case: Bots        | Alle Dashboard-Queries explizit filtern: `AND is_bot = FALSE`                                                               |
+| `link_clicks.code` ist nullable — stille Datenlücken möglich                                         | Edge Case: Null values | `WHERE code IS NOT NULL` in Aggregations-Queries                                                                            |
+| Nur 4 Testklicks, 36 Sekunden, 1 IP — keine echten Verteilungen sichtbar                             | Datenbasis             | Seed-Script mit realistischen Testdaten vor Dashboard-Implementation erforderlich                                           |
