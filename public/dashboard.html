@@ -4,14 +4,397 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LinkShort – Dashboard</title>
-    <link rel="stylesheet" href="style.css" />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f3f4f6;
+        color: #111827;
+        min-height: 100vh;
+      }
+
+      /* ── Nav ── */
+      nav {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        height: 56px;
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #4f46e5;
+        text-decoration: none;
+      }
+      nav a {
+        text-decoration: none;
+        color: #6b7280;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+      }
+      nav a.active {
+        color: #4f46e5;
+        border-bottom: 2px solid #4f46e5;
+      }
+      nav a:hover:not(.active) {
+        color: #111827;
+      }
+
+      /* ── Layout ── */
+      main {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+
+      /* ── Card ── */
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        padding: 1.5rem;
+      }
+      .card h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #374151;
+      }
+
+      /* ── Stats Grid ── */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+      @media (max-width: 580px) {
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .stat-card {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .stat-label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #4f46e5;
+        line-height: 1;
+      }
+
+      /* ── Table ── */
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      th {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        color: #6b7280;
+        white-space: nowrap;
+      }
+      td {
+        padding: 0.7rem 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: middle;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover td {
+        background: #fafafa;
+      }
+      .code {
+        font-family: monospace;
+        font-weight: 600;
+        color: #4f46e5;
+      }
+      .url-cell {
+        max-width: 400px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #6b7280;
+      }
+      .clicks-cell {
+        font-weight: 600;
+        color: #111827;
+        text-align: right;
+      }
+      th.align-right {
+        text-align: right;
+      }
+
+      /* ── Bar Chart ── */
+      .chart-wrap {
+        overflow-x: auto;
+      }
+      .chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 160px;
+        min-width: 560px;
+      }
+      .bar-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 4px;
+        height: 100%;
+      }
+      .bar-count {
+        font-size: 0.65rem;
+        color: #9ca3af;
+        line-height: 1;
+        min-height: 0.75rem;
+      }
+      .bar {
+        width: 100%;
+        background: #4f46e5;
+        border-radius: 3px 3px 0 0;
+        min-height: 2px;
+        transition: height 0.3s ease;
+      }
+      .bar.zero {
+        background: #e5e7eb;
+        min-height: 2px;
+      }
+      .bar-date {
+        font-size: 0.6rem;
+        color: #9ca3af;
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        line-height: 1;
+        height: 36px;
+        display: flex;
+        align-items: center;
+      }
+
+      /* ── Empty / Error ── */
+      .empty {
+        text-align: center;
+        padding: 2rem;
+        color: #9ca3af;
+        font-size: 0.9rem;
+      }
+      .chart-empty {
+        margin: auto;
+        color: #9ca3af;
+        font-size: 0.9rem;
+      }
+    </style>
   </head>
   <body>
-    <!-- TODO: Liste aller Links mit Code + Original-URL + Erstellungsdatum -->
-    <!-- TODO: Pro Link: Klick-Statistiken anzeigen (clicked_at, referrer, userAgent) -->
-    <!-- TODO: Pro Link: Löschen-Button -->
-    <!-- TODO: Link zurück zur index.html -->
+    <nav>
+      <a href="/" class="logo">LinkShort</a>
+      <a href="/">Links</a>
+      <a href="/dashboard.html" class="active">Dashboard</a>
+    </nav>
 
-    <script src="app.js" type="module"></script>
+    <main>
+      <!-- Stats-Karten -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Total Links</span>
+          <span class="stat-value" id="stat-total-links">–</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Total Klicks</span>
+          <span class="stat-value" id="stat-total-clicks">–</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Ø pro Link</span>
+          <span class="stat-value" id="stat-avg">–</span>
+        </div>
+      </div>
+
+      <!-- Top-Links-Tabelle -->
+      <div class="card">
+        <h2>Top 10 Links</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Original-URL</th>
+                <th class="align-right">Klicks</th>
+              </tr>
+            </thead>
+            <tbody id="top-links-body">
+              <tr>
+                <td colspan="3" class="empty">Lädt…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Clicks pro Tag -->
+      <div class="card">
+        <h2>Klicks pro Tag – letzte 30 Tage</h2>
+        <div class="chart-wrap">
+          <div class="chart" id="chart">
+            <span class="chart-empty">Lädt…</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // ── API ──────────────────────────────────────────────────────────────────
+
+      const api = {
+        overview: () => fetch("/api/dashboard/overview").then((r) => r.json()),
+        topLinks: (limit) =>
+          fetch(`/api/dashboard/top-links?limit=${limit}`).then((r) =>
+            r.json(),
+          ),
+        clicksPerDay: (days) =>
+          fetch(`/api/dashboard/clicks-per-day?days=${days}`).then((r) =>
+            r.json(),
+          ),
+      };
+
+      // ── Helpers ──────────────────────────────────────────────────────────────
+
+      const escHtml = (str) =>
+        String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+
+      const el = (id) => document.getElementById(id);
+
+      // ── Stats-Karten ─────────────────────────────────────────────────────────
+
+      async function loadOverview() {
+        try {
+          const data = await api.overview();
+          el("stat-total-links").textContent = data.total_links ?? "–";
+          el("stat-total-clicks").textContent = data.total_clicks ?? "–";
+          el("stat-avg").textContent =
+            data.avg_clicks_per_link != null ? data.avg_clicks_per_link : "–";
+        } catch {
+          ["stat-total-links", "stat-total-clicks", "stat-avg"].forEach(
+            (id) => (el(id).textContent = "!"),
+          );
+        }
+      }
+
+      // ── Top-Links-Tabelle ─────────────────────────────────────────────────────
+
+      async function loadTopLinks() {
+        const tbody = el("top-links-body");
+        try {
+          const rows = await api.topLinks(10);
+          if (rows.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="empty">Keine Daten vorhanden.</td></tr>`;
+            return;
+          }
+          tbody.innerHTML = rows
+            .map(
+              (r) => `
+              <tr>
+                <td><span class="code">${escHtml(r.code)}</span></td>
+                <td>
+                  <span class="url-cell" title="${escHtml(r.original_url)}">
+                    ${escHtml(r.original_url)}
+                  </span>
+                </td>
+                <td class="clicks-cell">${r.clicks}</td>
+              </tr>`,
+            )
+            .join("");
+        } catch {
+          tbody.innerHTML = `<tr><td colspan="3" class="empty">Fehler beim Laden.</td></tr>`;
+        }
+      }
+
+      // ── Bar Chart ────────────────────────────────────────────────────────────
+
+      function buildDateRange(days) {
+        const dates = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const d = new Date();
+          d.setUTCDate(d.getUTCDate() - i);
+          dates.push(d.toISOString().slice(0, 10));
+        }
+        return dates;
+      }
+
+      function renderChart(apiRows, days) {
+        const byDate = Object.fromEntries(
+          apiRows.map((r) => [String(r.day).slice(0, 10), r.clicks]),
+        );
+        const dates = buildDateRange(days);
+        const values = dates.map((d) => byDate[d] ?? 0);
+        const max = Math.max(...values, 1);
+
+        return dates
+          .map((date, i) => {
+            const v = values[i];
+            const heightPct = Math.max((v / max) * 100, v > 0 ? 2 : 0);
+            return `
+              <div class="bar-col">
+                <span class="bar-count">${v > 0 ? v : ""}</span>
+                <div class="bar${v === 0 ? " zero" : ""}" style="height:${heightPct}%"></div>
+                <span class="bar-date">${date.slice(5)}</span>
+              </div>`;
+          })
+          .join("");
+      }
+
+      async function loadChart() {
+        const chart = el("chart");
+        try {
+          const rows = await api.clicksPerDay(30);
+          chart.innerHTML = renderChart(rows, 30);
+        } catch {
+          chart.innerHTML = `<span class="chart-empty">Fehler beim Laden.</span>`;
+        }
+      }
+
+      // ── Init ─────────────────────────────────────────────────────────────────
+
+      loadOverview();
+      loadTopLinks();
+      loadChart();
+    </script>
   </body>
 </html>

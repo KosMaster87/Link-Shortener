@@ -320,7 +320,7 @@
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url }),
-          }).then((r) => r.json()),
+          }),
       };
 
       const shortUrl = (code) => `${origin}/${code}`;
@@ -438,8 +438,8 @@
           row.querySelector(".js-save")?.addEventListener("click", async () => {
             const input = row.querySelector(".js-edit-input");
             if (!input.reportValidity()) return;
-            const result = await api.updateLink(code, input.value);
-            if (!result.success) {
+            const res = await api.updateLink(code, input.value);
+            if (!res.ok) {
               alert("Ungültige URL.");
               return;
             }

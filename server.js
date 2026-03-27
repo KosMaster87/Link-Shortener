@@ -9,6 +9,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname } from "node:path";
 import { handleAnalytics } from "./src/routes/analytics.js";
+import { handleDashboard } from "./src/routes/dashboard.js";
 import { handleLinks } from "./src/routes/links.js";
 import { handleRedirect } from "./src/routes/redirect.js";
 import { getStats } from "./src/services/analytics-service.js";
@@ -95,12 +96,32 @@ const handleStats = async (res, slug) => {
 };
 
 /**
+ * Routet /api/dashboard/-Anfragen an handleDashboard.
+ * /api/dashboard/referrer/:code wird vor /api/dashboard/:sub geprüft.
+ * @param {import("node:http").IncomingMessage} req
+ * @param {import("node:http").ServerResponse} res
+ * @param {string} method - HTTP-Methode
+ * @param {string} path - URL-Pfad
+ * @returns {Promise<void>}
+ */
+const routeDashboard = async (req, res, method, path) => {
+  const referrerMatch = path.match(/^\/api\/dashboard\/referrer\/([^/]+)$/);
+  if (method === "GET" && referrerMatch)
+    return await handleDashboard(req, res, { sub: "referrer", code: referrerMatch[1] });
+  const subMatch = path.match(/^\/api\/dashboard\/([^/]+)$/);
+  if (method === "GET" && subMatch)
+    return await handleDashboard(req, res, { sub: subMatch[1] });
+  send404(res);
+};
+
+/**
  * Routet Anfragen unter /api/ an den passenden Handler:
  * GET|POST /api/links → handleLinks,
  * DELETE|PUT /api/links/:code → handleLinks mit Code,
  * PATCH /api/links/:code/toggle → handleLinks mit Code,
  * GET /api/links/:code/clicks → handleAnalytics,
- * GET /api/links/:code/stats → handleStats.
+ * GET /api/links/:code/stats → handleStats,
+ * GET /api/dashboard/* → routeDashboard.
  * Alle anderen Pfade oder Methoden antworten mit 404.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
@@ -123,6 +144,7 @@ const routeApi = async (req, res, method, path) => {
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
   if (method === "GET" && statsMatch)
     return await handleStats(res, statsMatch[1]);
+  if (path.startsWith("/api/dashboard/")) return await routeDashboard(req, res, method, path);
   send404(res);
 };
 
