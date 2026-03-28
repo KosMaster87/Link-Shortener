@@ -59,7 +59,7 @@ describe("createLink", () => {
     const result = await createLink({ url: "example.com" });
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "INVALID_URL");
+    assert.equal(result.error.code, "INVALID_URL");
   });
 
   // CUSTOM ALIAS: Wir verifizieren, dass der zurückgegebene code exakt dem
@@ -85,7 +85,7 @@ describe("createLink", () => {
     });
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "SLUG_TAKEN");
+    assert.equal(result.error.code, "SLUG_TAKEN");
   });
 
   // ALIAS KOLLISION: Wir legen denselben Alias zweimal an. Der erste muss
@@ -105,7 +105,7 @@ describe("createLink", () => {
 
     assert.equal(first.success, true);
     assert.equal(second.success, false);
-    assert.equal(second.error, "SLUG_TAKEN");
+    assert.equal(second.error.code, "SLUG_TAKEN");
   });
 });
 
@@ -133,7 +133,7 @@ describe("getLink", () => {
     const result = await getLink("xxxxxx");
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "NOT_FOUND");
+    assert.equal(result.error.code, "NOT_FOUND");
   });
 });
 
@@ -163,7 +163,7 @@ describe("updateLink", () => {
     const result = await updateLink("xxxxxx", "https://example.com");
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "NOT_FOUND");
+    assert.equal(result.error.code, "NOT_FOUND");
   });
 
   // FEHLERFALL ungültige URL: Die Validierung soll vor dem DB-Zugriff greifen.
@@ -176,7 +176,7 @@ describe("updateLink", () => {
     const result = await updateLink(created.data.code, "kein-protokoll.de");
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "INVALID_URL");
+    assert.equal(result.error.code, "INVALID_URL");
   });
 });
 
@@ -215,7 +215,7 @@ describe("toggleActive", () => {
     const result = await toggleActive("xxxxxx");
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "NOT_FOUND");
+    assert.equal(result.error.code, "NOT_FOUND");
   });
 });
 
@@ -284,21 +284,21 @@ describe("getInactiveLinks", () => {
     const result = await getInactiveLinks(0);
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "INVALID_DAYS");
+    assert.equal(result.error.code, "INVALID_DAYS");
   });
 
   it("gibt err('INVALID_DAYS') zurück für negative Zahl", async () => {
     const result = await getInactiveLinks(-3);
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "INVALID_DAYS");
+    assert.equal(result.error.code, "INVALID_DAYS");
   });
 
   it("gibt err('INVALID_DAYS') zurück für Float", async () => {
     const result = await getInactiveLinks(1.5);
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "INVALID_DAYS");
+    assert.equal(result.error.code, "INVALID_DAYS");
   });
 });
 
@@ -318,7 +318,7 @@ describe("deleteLink", () => {
 
     const afterDelete = await getLink(code);
     assert.equal(afterDelete.success, false);
-    assert.equal(afterDelete.error, "NOT_FOUND");
+    assert.equal(afterDelete.error.code, "NOT_FOUND");
     // code nicht in createdCodes pushen – der Link ist bereits gelöscht
   });
 });

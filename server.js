@@ -86,7 +86,7 @@ const send404 = (res) => {
  */
 const handleStats = async (res, slug) => {
   const result = await getStats(slug);
-  if (!result.success && result.error === "NOT_FOUND") return send404(res);
+  if (!result.success && result.error.code === "NOT_FOUND") return send404(res);
   if (!result.success) {
     res.writeHead(500, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ error: "INTERNAL_ERROR" }));
@@ -107,7 +107,10 @@ const handleStats = async (res, slug) => {
 const routeDashboard = async (req, res, method, path) => {
   const referrerMatch = path.match(/^\/api\/dashboard\/referrer\/([^/]+)$/);
   if (method === "GET" && referrerMatch)
-    return await handleDashboard(req, res, { sub: "referrer", code: referrerMatch[1] });
+    return await handleDashboard(req, res, {
+      sub: "referrer",
+      code: referrerMatch[1],
+    });
   const subMatch = path.match(/^\/api\/dashboard\/([^/]+)$/);
   if (method === "GET" && subMatch)
     return await handleDashboard(req, res, { sub: subMatch[1] });
@@ -144,7 +147,8 @@ const routeApi = async (req, res, method, path) => {
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
   if (method === "GET" && statsMatch)
     return await handleStats(res, statsMatch[1]);
-  if (path.startsWith("/api/dashboard/")) return await routeDashboard(req, res, method, path);
+  if (path.startsWith("/api/dashboard/"))
+    return await routeDashboard(req, res, method, path);
   send404(res);
 };
 

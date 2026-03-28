@@ -53,9 +53,25 @@
 
 ## Error Handling
 
-- `ok(data)` / `err("...")` aus `src/utils/result.js` — nie manuell `{ success: true/false }` bauen
-- Services geben immer Result zurück, Routes übersetzen via `ERROR_STATUS`-Map in HTTP-Status
-- Error Messages mit Kontext: `"Invalid URL: must start with http://. Received: ftp://example.com"`
+- `ok(data)` / `err(input)` aus `src/utils/result.js` — nie manuell `{ success: true/false }` bauen
+- `err()` normalisiert defensiv zu `{ code, message? }`:
+  - `err("NOT_FOUND")` → `{ code: "NOT_FOUND" }`
+  - `err({ code: "INVALID_INPUT", message: "..." })` → unverändert
+  - Objekte ohne `code` → `{ code: "UNEXPECTED", ...input }`
+- Services geben strukturierte Fehler zurück: immer `{ code, message }` — nie rohe Strings
+- Routes übersetzen via `ERROR_STATUS`-Map: `ERROR_STATUS[result.error.code] ?? 500`
+- HTTP Status Mapping (vollständig):
+  - `INVALID_URL` → 422 | `SLUG_TAKEN` → 409 | `NOT_FOUND` → 404
+  - `INVALID_INPUT` → 400 | `DB_ERROR` → 500 | `UNEXPECTED` → 500
+- Error Response Body: `{ error: result.error.code, message: result.error.message }`
+- Error Messages mit Kontext: `"days must be 1–365. Received: -1"`
+
+## Input Validation Rules (dashboard-service)
+
+- `limit` (getTopLinks): Ganzzahl 1–100, sonst `INVALID_INPUT`
+- `days` (getClicksPerDay): Ganzzahl 1–365, sonst `INVALID_INPUT`
+- `code` (getReferrerBreakdown): Existenz-Check gegen `short_links`, sonst `NOT_FOUND`
+- Validation findet im Service statt — Routes parsen nur (parseInt + Fallback auf Default)
 
 ## Code Patterns
 

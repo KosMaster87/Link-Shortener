@@ -16,9 +16,16 @@ export const ok = (data) => ({ success: true, data });
 
 /**
  * Erzeugt ein fehlgeschlagenes Result-Objekt.
- * Der error-String ist ein einheitlicher Fehler-Code den Routes auf
- * HTTP-Statuscodes mappen (z.B. NOT_FOUND → 404, INVALID_URL → 422).
- * @param {string} error - Fehler-Code (z.B. "NOT_FOUND", "INVALID_URL")
- * @returns {{ success: false, error: string }}
+ * Normalisiert den Input defensiv zu einem Objekt mit `code`-Feld:
+ *   - String      → { code: input }
+ *   - { code, … } → unverändert durchreichen
+ *   - { …kein code } → { code: "UNEXPECTED", …input }
+ * @param {string | { code: string, message?: string, [key: string]: * }} input
+ * @returns {{ success: false, error: { code: string, message?: string } }}
  */
-export const err = (error) => ({ success: false, error });
+export const err = (input) => {
+  if (typeof input === "string")
+    return { success: false, error: { code: input } };
+  if (input?.code) return { success: false, error: input };
+  return { success: false, error: { code: "UNEXPECTED", ...input } };
+};

@@ -17,7 +17,7 @@ import { getStats } from "../services/analytics-service.js";
  */
 export const handleAnalytics = async (req, res, params) => {
   const result = await getStats(params.code);
-  if (!result.success && result.error === "NOT_FOUND") {
+  if (!result.success && result.error.code === "NOT_FOUND") {
     res.writeHead(404, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ error: "NOT_FOUND" }));
   }

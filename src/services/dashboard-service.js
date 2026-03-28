@@ -33,6 +33,11 @@ import { err, ok } from "../utils/result.js";
  * @property {number} clicks - Klicks von dieser Quelle
  */
 
+const MIN_LIMIT = 1;
+const MAX_LIMIT = 100;
+const MIN_DAYS = 1;
+const MAX_DAYS = 365;
+
 const queryOverview = () =>
   pool.query(`
     SELECT
@@ -85,61 +90,114 @@ const queryReferrers = (code) =>
   );
 
 /**
+ * Prüft ob ein Short-Link-Code in der DB existiert.
+ * @param {string} code
+ * @returns {Promise<boolean>}
+ */
+const codeExists = async (code) => {
+  const { rows } = await pool.query(
+    "SELECT code FROM short_links WHERE code = $1",
+    [code],
+  );
+  return rows.length > 0;
+};
+
+/**
+ * Validiert limit: muss ganzzahlig und im Bereich MIN_LIMIT–MAX_LIMIT liegen.
+ * @param {number} limit
+ * @returns {{ success: true, data: number } | { success: false, error: object }}
+ */
+const validateLimit = (limit) => {
+  if (!Number.isInteger(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT)
+    return err({
+      code: "INVALID_INPUT",
+      message: `limit must be ${MIN_LIMIT}–${MAX_LIMIT}. Received: ${limit}`,
+    });
+  return ok(limit);
+};
+
+/**
+ * Validiert days: muss ganzzahlig und im Bereich MIN_DAYS–MAX_DAYS liegen.
+ * @param {number} days
+ * @returns {{ success: true, data: number } | { success: false, error: object }}
+ */
+const validateDays = (days) => {
+  if (!Number.isInteger(days) || days < MIN_DAYS || days > MAX_DAYS)
+    return err({
+      code: "INVALID_INPUT",
+      message: `days must be ${MIN_DAYS}–${MAX_DAYS}. Received: ${days}`,
+    });
+  return ok(days);
+};
+
+/**
  * Gibt globale Übersichtszahlen zurück: aktive Links, Gesamtklicks (ohne Bots),
  * Ø Klicks pro aktivem Link.
- * @returns {Promise<{ success: true, data: OverviewStats } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: OverviewStats } | { success: false, error: object }>}
  */
 export const getOverviewStats = async () => {
   try {
     const { rows } = await queryOverview();
+    if (!rows[0])
+      return err({
+        code: "DB_ERROR",
+        message: "Overview query returned no rows",
+      });
     return ok(rows[0]);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err("DB_ERROR");
+    return err({ code: "DB_ERROR", message: error.message });
   }
 };
 
 /**
  * Gibt Links absteigend nach Klickzahl zurück. Links mit 0 Klicks erscheinen am Ende.
- * @param {number} limit - Maximale Anzahl Einträge
- * @returns {Promise<{ success: true, data: TopLink[] } | { success: false, error: string }>}
+ * @param {number} limit - Maximale Anzahl Einträge (1–100)
+ * @returns {Promise<{ success: true, data: TopLink[] } | { success: false, error: object }>}
  */
 export const getTopLinks = async (limit) => {
+  const validation = validateLimit(limit);
+  if (!validation.success) return validation;
   try {
     const { rows } = await queryTopLinks(limit);
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err("DB_ERROR");
+    return err({ code: "DB_ERROR", message: error.message });
   }
 };
 
 /**
  * Gibt Klicks pro Tag für die letzten n Tage zurück (UTC-normiert).
- * @param {number} days - Anzahl Tage zurück ab jetzt
- * @returns {Promise<{ success: true, data: DayCount[] } | { success: false, error: string }>}
+ * @param {number} days - Anzahl Tage zurück ab jetzt (1–365)
+ * @returns {Promise<{ success: true, data: DayCount[] } | { success: false, error: object }>}
  */
 export const getClicksPerDay = async (days) => {
+  const validation = validateDays(days);
+  if (!validation.success) return validation;
   try {
     const { rows } = await queryClicksPerDay(days);
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err("DB_ERROR");
+    return err({ code: "DB_ERROR", message: error.message });
   }
 };
 
 /**
  * Gibt Referrer-Verteilung für einen Link zurück. Null-Referrer erscheinen als "direct".
+ * Gibt NOT_FOUND zurück wenn der Code nicht existiert.
  * @param {string} code - Short-Link-Code
- * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: object }>}
  */
 export const getReferrerBreakdown = async (code) => {
   try {
+    if (!(await codeExists(code)))
+      return err({ code: "NOT_FOUND", message: `Code not found: ${code}` });
     const { rows } = await queryReferrers(code);
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err("DB_ERROR");
+    return err({ code: "DB_ERROR", message: error.message });
   }
 };

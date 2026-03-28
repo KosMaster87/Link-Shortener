@@ -12,7 +12,12 @@ import {
   updateLink,
 } from "../services/link-service.js";
 
-const ERROR_STATUS = { INVALID_URL: 422, SLUG_TAKEN: 409, NOT_FOUND: 404 };
+const ERROR_STATUS = {
+  INVALID_URL: 422,
+  SLUG_TAKEN: 409,
+  NOT_FOUND: 404,
+  INVALID_INPUT: 400,
+};
 
 /**
  * Serialisiert data als JSON und sendet die Response mit dem gegebenen Status.
@@ -49,7 +54,9 @@ const handleGet = async (res) => {
 const handlePost = async (req, res) => {
   const result = await createLink(req.body);
   if (!result.success)
-    return send(res, ERROR_STATUS[result.error], { error: result.error });
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+    });
   return send(res, 201, result.data);
 };
 
@@ -63,7 +70,9 @@ const handlePost = async (req, res) => {
 const handleDelete = async (res, code) => {
   const result = await deleteLink(code);
   if (!result.success)
-    return send(res, ERROR_STATUS[result.error], { error: result.error });
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+    });
   res.writeHead(204);
   return res.end();
 };
@@ -80,7 +89,9 @@ const handleDelete = async (res, code) => {
 const handlePut = async (req, res, code) => {
   const result = await updateLink(code, req.body.url);
   if (!result.success)
-    return send(res, ERROR_STATUS[result.error], { error: result.error });
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+    });
   return send(res, 200, result.data);
 };
 
@@ -94,7 +105,9 @@ const handlePut = async (req, res, code) => {
 const handleToggle = async (res, code) => {
   const result = await toggleActive(code);
   if (!result.success)
-    return send(res, ERROR_STATUS[result.error], { error: result.error });
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+    });
   return send(res, 200, result.data);
 };
 

@@ -192,7 +192,7 @@ describe("trackClick", () => {
     });
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "NOT_FOUND");
+    assert.equal(result.error.code, "NOT_FOUND");
   });
 
   // BUG #1 – NULL USER-AGENT: Requests ohne User-Agent-Header sind gültig
@@ -227,9 +227,9 @@ describe("trackClick", () => {
     });
 
     assert.equal(emptyIp.success, false);
-    assert.equal(emptyIp.error, "MISSING_IP");
+    assert.equal(emptyIp.error.code, "MISSING_IP");
     assert.equal(nullIp.success, false);
-    assert.equal(nullIp.error, "MISSING_IP");
+    assert.equal(nullIp.error.code, "MISSING_IP");
   });
 });
 
@@ -574,6 +574,6 @@ describe("getStats", () => {
     const result = await getStats("xxxxxx");
 
     assert.equal(result.success, false);
-    assert.equal(result.error, "NOT_FOUND");
+    assert.equal(result.error.code, "NOT_FOUND");
   });
 });

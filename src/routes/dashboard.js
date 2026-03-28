@@ -13,7 +13,7 @@ import {
 
 const DEFAULT_LIMIT = 10;
 const DEFAULT_DAYS = 30;
-const ERROR_STATUS = { DB_ERROR: 500, NOT_FOUND: 404 };
+const ERROR_STATUS = { DB_ERROR: 500, NOT_FOUND: 404, INVALID_INPUT: 400 };
 
 /**
  * Serialisiert data als JSON und sendet die Response mit dem gegebenen Status.
@@ -35,7 +35,10 @@ const send = (res, status, data) => {
  */
 const sendResult = (res, result) => {
   if (!result.success)
-    return send(res, ERROR_STATUS[result.error] ?? 500, { error: result.error });
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+      message: result.error.message,
+    });
   return send(res, 200, result.data);
 };
 
@@ -87,7 +90,8 @@ const handleReferrer = async (res, code) =>
  * @returns {Promise<void>}
  */
 export const handleDashboard = async (req, res, params) => {
-  if (req.method !== "GET") return send(res, 405, { error: "METHOD_NOT_ALLOWED" });
+  if (req.method !== "GET")
+    return send(res, 405, { error: "METHOD_NOT_ALLOWED" });
   const { searchParams } = new URL(req.url, "http://localhost");
   const { sub, code } = params;
   if (sub === "overview") return handleOverview(res);
