@@ -90,3 +90,49 @@
 | `is_bot = FALSE` ist DEFAULT — alle Testklicks sind `false`, auch ohne UA-Check                      | Edge Case: Bots        | Alle Dashboard-Queries explizit filtern: `AND is_bot = FALSE`                                                               |
 | `link_clicks.code` ist nullable — stille Datenlücken möglich                                         | Edge Case: Null values | `WHERE code IS NOT NULL` in Aggregations-Queries                                                                            |
 | Nur 4 Testklicks, 36 Sekunden, 1 IP — keine echten Verteilungen sichtbar                             | Datenbasis             | Seed-Script mit realistischen Testdaten vor Dashboard-Implementation erforderlich                                           |
+
+## Performance Patterns
+
+### getTopLinks: Vollaggregation — Index hilft nicht, Materialized View bei Wachstum
+
+`getTopLinks` aggregiert alle `link_clicks` für alle Codes gleichzeitig (`GROUP BY sl.code`).
+PostgreSQL wählt korrekt **Hash Right Join + Seq Scan** — ein Index auf `link_clicks.code`
+ändert den Plan nicht, weil alle Rows ohnehin gelesen werden müssen.
+
+- Skalierungsgrenze: ~100K Klicks → >500ms Dashboard-Ladezeit (linear)
+- Lösung bei Wachstum: `MATERIALIZED VIEW top_links_mv` mit `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+- `idx_link_clicks_code` existiert und ist sinnvoll — aber für `getTopLinks` wirkungslos.
+  Er nutzt `getReferrerBreakdown` (Point-Lookup), nicht Vollaggregationen.
+
+### DATE-Typ aus pg-Treiber: immer TO_CHAR verwenden
+
+Der pg-Treiber wandelt PostgreSQL `DATE`-Typ in JavaScript `Date`-Objekte um.
+`JSON.stringify` erzeugt dann ISO-Timestamps (`"2026-03-29T04:00:00.000Z"`) statt `"YYYY-MM-DD"`.
+Je nach Server-Timezone kann das Datum um ±1 Tag versetzt sein.
+
+**Regel:** Datumswerte immer als String zurückgeben:
+
+```sql
+TO_CHAR(DATE_TRUNC('day', clicked_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day
+```
+
+Nie `::date` casten — der JS-Treiber bricht das Format auf.
+
+### idx_link_clicks_code: wirkt bei Point-Lookups, nicht bei Vollaggregation
+
+| Query                                         | Index genutzt?         | Warum                                   |
+| --------------------------------------------- | ---------------------- | --------------------------------------- |
+| `getReferrerBreakdown` (`WHERE code = $1`)    | Ja — Bitmap Index Scan | Hochselektiv: 1 Code ≈ 350 von 50K Rows |
+| `getTopLinks` (`LEFT JOIN ... GROUP BY code`) | Nein — Hash Right Join | Vollaggregation: alle Rows nötig        |
+
+### getOverviewStats: avg_clicks_per_link im Service berechnen
+
+`avg_clicks_per_link` nicht per SQL-Subquery berechnen — das erzeugt einen redundanten zweiten
+Full Scan auf `link_clicks`. Stattdessen nach dem Query im Service:
+
+```js
+const avg_clicks_per_link =
+  total_links === 0 ? 0 : parseFloat((total_clicks / total_links).toFixed(2));
+```
+
+Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.

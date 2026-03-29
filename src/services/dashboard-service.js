@@ -41,15 +41,9 @@ const MAX_DAYS = 365;
 const queryOverview = () =>
   pool.query(`
     SELECT
-      (SELECT COUNT(*)::int FROM short_links WHERE is_active = TRUE)  AS total_links,
+      (SELECT COUNT(*)::int FROM short_links WHERE is_active = TRUE) AS total_links,
       (SELECT COUNT(*)::int FROM link_clicks
-        WHERE is_bot = FALSE AND code IS NOT NULL)                     AS total_clicks,
-      ROUND(
-        (SELECT COUNT(*)::numeric FROM link_clicks
-          WHERE is_bot = FALSE AND code IS NOT NULL) /
-        NULLIF((SELECT COUNT(*) FROM short_links WHERE is_active = TRUE), 0),
-        2
-      )::float                                                         AS avg_clicks_per_link
+        WHERE is_bot = FALSE AND code IS NOT NULL)                    AS total_clicks
   `);
 
 const queryTopLinks = (limit) =>
@@ -58,6 +52,7 @@ const queryTopLinks = (limit) =>
             COUNT(lc.id) FILTER (WHERE lc.is_bot = FALSE)::int AS clicks
      FROM short_links sl
      LEFT JOIN link_clicks lc ON sl.code = lc.code
+     WHERE sl.is_active = TRUE
      GROUP BY sl.code, sl.original_url
      ORDER BY clicks DESC
      LIMIT $1`,
@@ -66,7 +61,7 @@ const queryTopLinks = (limit) =>
 
 const queryClicksPerDay = (days) =>
   pool.query(
-    `SELECT DATE_TRUNC('day', clicked_at AT TIME ZONE 'UTC')::date AS day,
+    `SELECT TO_CHAR(DATE_TRUNC('day', clicked_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS day,
             COUNT(*)::int AS clicks
      FROM link_clicks
      WHERE is_bot = FALSE
@@ -143,7 +138,12 @@ export const getOverviewStats = async () => {
         code: "DB_ERROR",
         message: "Overview query returned no rows",
       });
-    return ok(rows[0]);
+    const { total_links, total_clicks } = rows[0];
+    const avg_clicks_per_link =
+      total_links === 0
+        ? 0
+        : parseFloat((total_clicks / total_links).toFixed(2));
+    return ok({ total_links, total_clicks, avg_clicks_per_link });
   } catch (error) {
     console.error("dashboard-service error:", error);
     return err({ code: "DB_ERROR", message: error.message });
