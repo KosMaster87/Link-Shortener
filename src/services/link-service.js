@@ -33,6 +33,9 @@ const RESERVED = new Set([
 ]);
 const SLUG_LENGTH = 6;
 const MAX_SLUG_ATTEMPTS = 3;
+const ALIAS_MAX_LENGTH = 50;
+const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
+const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 const generateSlug = () => {
   const bytes = randomBytes(SLUG_LENGTH);
@@ -44,18 +47,20 @@ const toLink = (row) => ({
   originalUrl: row.original_url,
   createdAt: row.created_at,
   isActive: row.is_active,
+  userId: row.user_id ?? null,
 });
 
 /**
- * Prüft ob eine URL syntaktisch gültig ist, indem sie durch den nativen
- * URL-Konstruktor geparst wird. Gibt false zurück bei fehlenden Protokollen
- * oder ungültigen Formaten (z.B. "example.com" ohne http/https).
+ * Prüft ob eine URL sicher ist: nur http/https, keine internen Hosts,
+ * keine gefährlichen Protokolle (javascript:, data:, file: etc.).
  * @param {string} url
  * @returns {boolean}
  */
 const isValidUrl = (url) => {
   try {
-    new URL(url);
+    const parsed = new URL(url);
+    if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) return false;
+    if (BLOCKED_HOSTS.has(parsed.hostname)) return false;
     return true;
   } catch {
     return false;
@@ -64,13 +69,21 @@ const isValidUrl = (url) => {
 
 /**
  * Prüft ob ein Custom-Alias verwendbar ist.
- * Gibt SLUG_TAKEN zurück wenn der Alias in der RESERVED-Liste steht
- * oder bereits als Code in der DB existiert. Bei Erfolg wird der Alias
- * unverändert zurückgegeben.
+ * Gibt INVALID_INPUT zurück bei ungültiger Länge oder reserviertem Namen.
+ * Gibt SLUG_TAKEN zurück wenn der Alias bereits in der DB existiert.
  * @param {string} alias
- * @returns {Promise<{ success: true, data: string } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: string } | { success: false, error: Object }>}
  */
 const validateAlias = async (alias) => {
+  if (
+    typeof alias !== "string" ||
+    alias.length < 1 ||
+    alias.length > ALIAS_MAX_LENGTH
+  )
+    return err({
+      code: "INVALID_INPUT",
+      message: `Alias muss 1–${ALIAS_MAX_LENGTH} Zeichen lang sein.`,
+    });
   if (RESERVED.has(alias)) return err("SLUG_TAKEN");
   const existing = await pool.query(
     "SELECT code FROM short_links WHERE code = $1",
@@ -101,37 +114,38 @@ const findAvailableSlug = async () => {
 
 /**
  * Schreibt einen neuen Short-Link in die DB und gibt ihn als Link-Objekt zurück.
- * Setzt code und original_url; created_at wird von der DB gesetzt.
  * @param {string} code - Slug für den neuen Link
  * @param {string} url - Original-URL
+ * @param {string | null} userId - UUID des Besitzers (oder null)
  * @returns {Promise<{ success: true, data: Link }>}
  */
-const insertLink = async (code, url) => {
+const insertLink = async (code, url, userId) => {
   const result = await pool.query(
-    "INSERT INTO short_links (code, original_url) VALUES ($1, $2) RETURNING *",
-    [code, url],
+    "INSERT INTO short_links (code, original_url, user_id) VALUES ($1, $2, $3) RETURNING *",
+    [code, url, userId ?? null],
   );
   return ok(toLink(result.rows[0]));
 };
 
 /**
  * Erstellt einen neuen Short-Link und gibt ihn zurück.
- * Gibt INVALID_URL zurück wenn die URL kein gültiges Format hat.
+ * Gibt INVALID_URL zurück wenn die URL kein sicheres http/https-Format hat.
  * Gibt SLUG_TAKEN zurück wenn alias vergeben/reserviert ist oder kein
  * freier zufälliger Slug gefunden werden konnte.
- * @param {import("./link-service.js").CreateLinkInput} input - URL und optionaler Alias
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: string }>}
+ * @param {import("./link-service.js").CreateLinkInput} input - URL, optionaler Alias
+ * @param {string | null} userId - UUID des eingeloggten Users
+ * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: Object }>}
  */
-export const createLink = async ({ url, alias } = {}) => {
+export const createLink = async ({ url, alias } = {}, userId = null) => {
   if (!isValidUrl(url)) return err("INVALID_URL");
   if (alias) {
     const aliasResult = await validateAlias(alias);
     if (!aliasResult.success) return aliasResult;
-    return insertLink(alias, url);
+    return insertLink(alias, url, userId);
   }
   const slugResult = await findAvailableSlug();
   if (!slugResult.success) return slugResult;
-  return insertLink(slugResult.data, url);
+  return insertLink(slugResult.data, url, userId);
 };
 
 /**
@@ -149,14 +163,18 @@ export const getLink = async (code) => {
 };
 
 /**
- * Lädt alle Short-Links aus der DB, absteigend nach Erstellungsdatum sortiert.
- * Gibt immer ein Array zurück — leer wenn noch keine Links angelegt wurden.
+ * Lädt alle Short-Links eines Users aus der DB (nach created_at DESC).
+ * Ohne userId werden alle Links zurückgegeben (Backward-Compat für Public-GET).
+ * @param {string | null} userId
  * @returns {Promise<{ success: true, data: import("./link-service.js").Link[] }>}
  */
-export const getAllLinks = async () => {
-  const result = await pool.query(
-    "SELECT * FROM short_links ORDER BY created_at DESC",
-  );
+export const getAllLinks = async (userId = null) => {
+  const result = userId
+    ? await pool.query(
+        "SELECT * FROM short_links WHERE user_id = $1 ORDER BY created_at DESC",
+        [userId],
+      )
+    : await pool.query("SELECT * FROM short_links ORDER BY created_at DESC");
   return ok(result.rows.map(toLink));
 };
 
@@ -196,24 +214,36 @@ export const updateLink = async (code, url) => {
 /**
  * Gibt alle Short-Links zurück, die in den letzten `days` Tagen keinen Klick hatten.
  * Berücksichtigt auch Links ohne Klick-Einträge (LEFT JOIN).
+ * Optional kann nach Besitzer gefiltert werden, damit Tests und spätere
+ * User-Dashboards nicht von fremden Daten beeinflusst werden.
  * Gibt INVALID_DAYS zurück wenn `days` keine positive ganze Zahl ist.
  * @param {number} days - Zeitraum in Tagen (muss > 0 sein)
+ * @param {string | null} userId - Optionaler Besitzer-Filter
  * @returns {Promise<{ success: true, data: import("./link-service.js").Link[] } | { success: false, error: string }>}
  */
-export const getInactiveLinks = async (days) => {
+export const getInactiveLinks = async (days, userId = null) => {
   if (!Number.isInteger(days) || days <= 0) return err("INVALID_DAYS");
   const start = performance.now();
-  const { rows } = await pool.query(
-    `SELECT sl.* FROM short_links sl
-     LEFT JOIN link_clicks lc
-       ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
-     GROUP BY sl.code
-     HAVING MAX(lc.clicked_at) IS NULL
-     ORDER BY sl.created_at DESC`,
-    [days],
-  );
+  const query = userId
+    ? `SELECT sl.* FROM short_links sl
+       LEFT JOIN link_clicks lc
+         ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
+       WHERE sl.user_id = $2
+       GROUP BY sl.code
+       HAVING MAX(lc.clicked_at) IS NULL
+       ORDER BY sl.created_at DESC`
+    : `SELECT sl.* FROM short_links sl
+       LEFT JOIN link_clicks lc
+         ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
+       GROUP BY sl.code
+       HAVING MAX(lc.clicked_at) IS NULL
+       ORDER BY sl.created_at DESC`;
+  const params = userId ? [days, userId] : [days];
+  const { rows } = await pool.query(query, params);
   const ms = (performance.now() - start).toFixed(2);
-  console.log(`[getInactiveLinks] days=${days} found=${rows.length} duration=${ms}ms`);
+  console.log(
+    `[getInactiveLinks] days=${days} found=${rows.length} duration=${ms}ms`,
+  );
   return ok(rows.map(toLink));
 };
 

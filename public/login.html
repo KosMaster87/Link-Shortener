@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkShort – Anmelden</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f3f4f6;
+        color: #111827;
+        min-height: 100vh;
+      }
+
+      /* ── Nav ── */
+      nav {
+        background: #fff;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        height: 56px;
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #4f46e5;
+        text-decoration: none;
+      }
+      nav a {
+        text-decoration: none;
+        color: #6b7280;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+      }
+      nav a:hover {
+        color: #111827;
+      }
+
+      /* ── Auth Grid ── */
+      .auth-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        max-width: 680px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+      }
+      @media (max-width: 580px) {
+        .auth-grid {
+          grid-template-columns: 1fr;
+          margin: 1.5rem auto;
+        }
+      }
+
+      /* ── Card ── */
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        padding: 1.5rem;
+      }
+      .card h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1.25rem;
+        color: #374151;
+      }
+
+      /* ── Form ── */
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 0.875rem;
+      }
+      label {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #374151;
+      }
+      input[type="email"],
+      input[type="password"] {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.15s;
+        width: 100%;
+      }
+      input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px #eef2ff;
+      }
+
+      /* ── Button ── */
+      .btn {
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.15s;
+        width: 100%;
+        margin-top: 0.25rem;
+      }
+      .btn:hover {
+        opacity: 0.85;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn-primary {
+        background: #4f46e5;
+        color: #fff;
+      }
+
+      /* ── Error ── */
+      .error-msg {
+        color: #b91c1c;
+        font-size: 0.82rem;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/" class="logo">LinkShort</a>
+      <a href="/">Links</a>
+      <a href="/dashboard.html">Dashboard</a>
+    </nav>
+
+    <div class="auth-grid">
+      <!-- Registrieren -->
+      <div class="card">
+        <h2>Registrieren</h2>
+        <form id="register-form" novalidate>
+          <div class="form-group">
+            <label for="reg-email">E-Mail</label>
+            <input
+              type="email"
+              id="reg-email"
+              placeholder="name@beispiel.de"
+              autocomplete="email"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Passwort</label>
+            <input
+              type="password"
+              id="reg-password"
+              placeholder="Mindestens 8 Zeichen"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Registrieren</button>
+          <p id="reg-error" class="error-msg" style="display: none"></p>
+        </form>
+      </div>
+
+      <!-- Anmelden -->
+      <div class="card">
+        <h2>Anmelden</h2>
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label for="login-email">E-Mail</label>
+            <input
+              type="email"
+              id="login-email"
+              placeholder="name@beispiel.de"
+              autocomplete="email"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Passwort</label>
+            <input
+              type="password"
+              id="login-password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">Anmelden</button>
+          <p id="login-error" class="error-msg" style="display: none"></p>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // Bereits eingeloggt → weiterleiten
+      if (localStorage.getItem("ls_token")) window.location.replace("/");
+
+      // ── API ──────────────────────────────────────────────────────────────────
+
+      const authApi = {
+        register: (email, password) =>
+          fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          }),
+        login: (email, password) =>
+          fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          }),
+      };
+
+      // ── Registrieren ──────────────────────────────────────────────────────────
+
+      document
+        .getElementById("register-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("reg-email").value.trim();
+          const password = document.getElementById("reg-password").value;
+          const errorEl = document.getElementById("reg-error");
+          const btn = e.target.querySelector("[type=submit]");
+
+          errorEl.style.display = "none";
+          btn.disabled = true;
+
+          try {
+            const res = await authApi.register(email, password);
+            const data = await res.json();
+
+            if (!res.ok) {
+              errorEl.textContent =
+                data.error === "EMAIL_TAKEN"
+                  ? "Diese E-Mail-Adresse ist bereits registriert."
+                  : data.error === "INVALID_INPUT"
+                    ? "Bitte alle Felder korrekt ausfüllen."
+                    : "Ein Fehler ist aufgetreten. Bitte versuche es erneut.";
+              errorEl.style.display = "block";
+              return;
+            }
+
+            localStorage.setItem("ls_token", data.token);
+            window.location.href = "/";
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+      // ── Anmelden ─────────────────────────────────────────────────────────────
+
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("login-email").value.trim();
+          const password = document.getElementById("login-password").value;
+          const errorEl = document.getElementById("login-error");
+          const btn = e.target.querySelector("[type=submit]");
+
+          errorEl.style.display = "none";
+          btn.disabled = true;
+
+          try {
+            const res = await authApi.login(email, password);
+
+            if (!res.ok) {
+              errorEl.textContent = "Ungültige Anmeldedaten.";
+              errorEl.style.display = "block";
+              return;
+            }
+
+            const data = await res.json();
+            localStorage.setItem("ls_token", data.token);
+            window.location.href = "/";
+          } finally {
+            btn.disabled = false;
+          }
+        });
+    </script>
+  </body>
+</html>

@@ -9,12 +9,16 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname } from "node:path";
 import { handleAnalytics } from "./src/routes/analytics.js";
+import { handleAuth } from "./src/routes/auth.js";
 import { handleDashboard } from "./src/routes/dashboard.js";
 import { handleLinks } from "./src/routes/links.js";
 import { handleRedirect } from "./src/routes/redirect.js";
 import { getStats } from "./src/services/analytics-service.js";
+import { requireAuth } from "./src/middleware/auth.js";
+import { isAllowed, LIMITS } from "./src/utils/rate-limit.js";
 
 const PORT = process.env.PORT ?? 3000;
+const BODY_LIMIT_BYTES = 16_384; // 16 KB
 
 const MIME_TYPES = {
   ".html": "text/html",
@@ -22,20 +26,63 @@ const MIME_TYPES = {
   ".js": "application/javascript",
 };
 
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+};
+
 /**
- * Liest den Request-Body als String und parst ihn als JSON.
- * Gibt ein leeres Objekt zurück wenn der Body fehlt oder kein gültiges JSON ist —
- * wirft nie einen Fehler.
- * @param {import("node:http").IncomingMessage} req - Eingehender HTTP-Request
- * @returns {Promise<Object>} Geparster Body oder leeres Objekt bei Parse-Fehler
+ * Setzt Security-Header auf der Response.
+ * @param {import("node:http").ServerResponse} res
+ * @returns {void}
  */
-const parseBody = (req) =>
+const applySecurityHeaders = (res) => {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS))
+    res.setHeader(key, value);
+};
+
+/**
+ * Extrahiert die Client-IP für Rate-Limiting (nur socket.remoteAddress).
+ * @param {import("node:http").IncomingMessage} req
+ * @returns {string}
+ */
+const clientIp = (req) => req.socket.remoteAddress ?? "unknown";
+
+/**
+ * Sendet 429 Too Many Requests als JSON.
+ * @param {import("node:http").ServerResponse} res
+ * @returns {void}
+ */
+const sendTooManyRequests = (res) => {
+  res.writeHead(429, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "RATE_LIMITED", message: "Zu viele Anfragen. Bitte warten." }));
+};
+
+/**
+ * Liest den Request-Body als String, bricht bei Überschreitung von BODY_LIMIT_BYTES
+ * mit 413 ab und parst das Ergebnis als JSON.
+ * @param {import("node:http").IncomingMessage} req
+ * @param {import("node:http").ServerResponse} res
+ * @returns {Promise<Object | null>} Geparster Body oder null bei Fehler/Überschreitung
+ */
+const parseBody = (req, res) =>
   new Promise((resolve) => {
     let raw = "";
+    let aborted = false;
     req.on("data", (chunk) => {
+      if (aborted) return;
       raw += chunk;
+      if (Buffer.byteLength(raw) > BODY_LIMIT_BYTES) {
+        aborted = true;
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "PAYLOAD_TOO_LARGE", message: "Request-Body zu groß (max. 16 KB)." }));
+        resolve(null);
+      }
     });
     req.on("end", () => {
+      if (aborted) return;
       try {
         resolve(JSON.parse(raw));
       } catch {
@@ -46,10 +93,8 @@ const parseBody = (req) =>
 
 /**
  * Liest eine Datei aus public/ und sendet sie mit passendem Content-Type.
- * "/" wird auf "/index.html" umgeleitet. Antwortet mit 404 wenn die
- * Datei nicht existiert.
- * @param {import("node:http").ServerResponse} res - HTTP-Response
- * @param {string} urlPath - URL-Pfad der angeforderten Datei
+ * @param {import("node:http").ServerResponse} res
+ * @param {string} urlPath
  * @returns {Promise<void>}
  */
 const serveStatic = async (res, urlPath) => {
@@ -67,8 +112,7 @@ const serveStatic = async (res, urlPath) => {
 
 /**
  * Sendet { error: "NOT_FOUND" } mit Status 404 als JSON-Antwort.
- * Wird für unbekannte API-Routen und nicht erlaubte Methoden verwendet.
- * @param {import("node:http").ServerResponse} res - HTTP-Response
+ * @param {import("node:http").ServerResponse} res
  * @returns {void}
  */
 const send404 = (res) => {
@@ -77,11 +121,9 @@ const send404 = (res) => {
 };
 
 /**
- * Lädt aggregierte Statistiken für einen Short-Link und antwortet mit 200 JSON.
- * Schlägt mit 404 fehl wenn kein Link mit diesem Code existiert.
- * Schlägt mit 500 fehl wenn die Stats-Abfrage fehlschlägt.
+ * Lädt aggregierte Statistiken für einen Short-Link.
  * @param {import("node:http").ServerResponse} res
- * @param {string} slug - Short-Link-Code
+ * @param {string} slug
  * @returns {Promise<void>}
  */
 const handleStats = async (res, slug) => {
@@ -97,20 +139,16 @@ const handleStats = async (res, slug) => {
 
 /**
  * Routet /api/dashboard/-Anfragen an handleDashboard.
- * /api/dashboard/referrer/:code wird vor /api/dashboard/:sub geprüft.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
- * @param {string} method - HTTP-Methode
- * @param {string} path - URL-Pfad
+ * @param {string} method
+ * @param {string} path
  * @returns {Promise<void>}
  */
 const routeDashboard = async (req, res, method, path) => {
   const referrerMatch = path.match(/^\/api\/dashboard\/referrer\/([^/]+)$/);
   if (method === "GET" && referrerMatch)
-    return await handleDashboard(req, res, {
-      sub: "referrer",
-      code: referrerMatch[1],
-    });
+    return await handleDashboard(req, res, { sub: "referrer", code: referrerMatch[1] });
   const subMatch = path.match(/^\/api\/dashboard\/([^/]+)$/);
   if (method === "GET" && subMatch)
     return await handleDashboard(req, res, { sub: subMatch[1] });
@@ -118,47 +156,84 @@ const routeDashboard = async (req, res, method, path) => {
 };
 
 /**
- * Routet Anfragen unter /api/ an den passenden Handler:
- * GET|POST /api/links → handleLinks,
- * DELETE|PUT /api/links/:code → handleLinks mit Code,
- * PATCH /api/links/:code/toggle → handleLinks mit Code,
- * GET /api/links/:code/clicks → handleAnalytics,
- * GET /api/links/:code/stats → handleStats,
- * GET /api/dashboard/* → routeDashboard.
- * Alle anderen Pfade oder Methoden antworten mit 404.
+ * Wendet requireAuth als Promise-Wrapper an.
+ * Gibt true zurück wenn Auth erfolgreich, false wenn 401 gesendet.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
- * @param {string} method - HTTP-Methode
- * @param {string} path - URL-Pfad
+ * @returns {Promise<boolean>}
+ */
+const checkAuth = (req, res) =>
+  new Promise((resolve) => {
+    requireAuth(req, res, () => resolve(true));
+    // requireAuth ruft next() nur bei Erfolg — bei 401 endet die Response
+    // ohne next()-Aufruf, daher Promise hängt nicht: res.end() schließt die Verbindung.
+    res.on("finish", () => resolve(false));
+  });
+
+/**
+ * Routet Anfragen unter /api/ an den passenden Handler.
+ * @param {import("node:http").IncomingMessage} req
+ * @param {import("node:http").ServerResponse} res
+ * @param {string} method
+ * @param {string} path
  * @returns {Promise<void>}
  */
 const routeApi = async (req, res, method, path) => {
-  if (["GET", "POST"].includes(method) && path === "/api/links")
+  const ip = clientIp(req);
+
+  // Auth-Routen
+  const authMatch = path.match(/^\/api\/auth\/(register|login)$/);
+  if (authMatch) {
+    const bucket = authMatch[1] === "login" ? "login" : "general";
+    if (!isAllowed(ip, bucket, LIMITS[bucket])) return sendTooManyRequests(res);
+    return await handleAuth(req, res, { action: authMatch[1] });
+  }
+
+  // Allgemeines Rate-Limit
+  if (!isAllowed(ip, "general", LIMITS.general)) return sendTooManyRequests(res);
+
+  // Links: GET öffentlich, Schreibops erfordern Auth
+  if (method === "GET" && path === "/api/links") return await handleLinks(req, res, {});
+
+  if (method === "POST" && path === "/api/links") {
+    if (!isAllowed(ip, "createLink", LIMITS.createLink)) return sendTooManyRequests(res);
+    const authed = await checkAuth(req, res);
+    if (!authed) return;
     return await handleLinks(req, res, {});
+  }
+
   const codeMatch = path.match(/^\/api\/links\/([^/]+)$/);
-  if (["DELETE", "PUT"].includes(method) && codeMatch)
+  if (["DELETE", "PUT"].includes(method) && codeMatch) {
+    const authed = await checkAuth(req, res);
+    if (!authed) return;
     return await handleLinks(req, res, { code: codeMatch[1] });
+  }
+
   const toggleMatch = path.match(/^\/api\/links\/([^/]+)\/toggle$/);
-  if (method === "PATCH" && toggleMatch)
+  if (method === "PATCH" && toggleMatch) {
+    const authed = await checkAuth(req, res);
+    if (!authed) return;
     return await handleLinks(req, res, { code: toggleMatch[1] });
+  }
+
   const clicksMatch = path.match(/^\/api\/links\/([^/]+)\/clicks$/);
   if (method === "GET" && clicksMatch)
     return await handleAnalytics(req, res, { code: clicksMatch[1] });
+
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
-  if (method === "GET" && statsMatch)
-    return await handleStats(res, statsMatch[1]);
+  if (method === "GET" && statsMatch) return await handleStats(res, statsMatch[1]);
+
   if (path.startsWith("/api/dashboard/"))
     return await routeDashboard(req, res, method, path);
+
   send404(res);
 };
 
 /**
- * Routet GET-Anfragen: ein 6-stelliger alphanumerischer Pfad wird als
- * Short-Code interpretiert und an handleRedirect übergeben.
- * Alle anderen Pfade werden als statische Datei aus public/ bedient.
+ * Routet GET-Anfragen: Short-Code oder statische Datei.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
- * @param {string} path - URL-Pfad
+ * @param {string} path
  * @returns {Promise<void>}
  */
 const routeGet = async (req, res, path) => {
@@ -168,17 +243,19 @@ const routeGet = async (req, res, path) => {
 };
 
 /**
- * Einstiegspunkt für jeden Request: parst den Body bei POST/PUT,
- * leitet /api/*-Pfade an routeApi weiter, GET-Anfragen an routeGet.
- * Alle anderen Methoden auf Nicht-API-Pfaden antworten mit 404.
+ * Einstiegspunkt für jeden Request.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @returns {Promise<void>}
  */
 const routeRequest = async (req, res) => {
+  applySecurityHeaders(res);
   const { method } = req;
   const path = new URL(req.url, `http://localhost:${PORT}`).pathname;
-  if (["POST", "PUT"].includes(method)) req.body = await parseBody(req);
+  if (["POST", "PUT", "PATCH"].includes(method)) {
+    req.body = await parseBody(req, res);
+    if (req.body === null) return; // 413 wurde bereits gesendet
+  }
   if (path.startsWith("/api/")) return await routeApi(req, res, method, path);
   if (method === "GET") return await routeGet(req, res, path);
   send404(res);
@@ -188,9 +265,12 @@ const server = createServer(async (req, res) => {
   try {
     await routeRequest(req, res);
   } catch (error) {
-    console.error("Unhandled error:", error);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "INTERNAL_ERROR" }));
+    const isDev = process.env.NODE_ENV !== "production";
+    console.error("Unhandled error:", isDev ? error : error.message);
+    if (!res.headersSent) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "INTERNAL_ERROR" }));
+    }
   }
 });
 

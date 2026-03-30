@@ -49,6 +49,9 @@
       nav a:hover:not(.active) {
         color: #111827;
       }
+      #nav-auth {
+        margin-left: auto;
+      }
 
       /* ── Layout ── */
       main {
@@ -239,6 +242,7 @@
       <a href="/" class="logo">LinkShort</a>
       <a href="/" class="active">Links</a>
       <a href="/dashboard.html">Dashboard</a>
+      <span id="nav-auth"></span>
     </nav>
 
     <main>
@@ -298,6 +302,50 @@
     <script>
       const origin = window.location.origin;
 
+      // ── Auth ─────────────────────────────────────────────────────────────────
+
+      const getToken = () => localStorage.getItem("ls_token");
+      const authHeaders = () => {
+        const t = getToken();
+        return t ? { Authorization: `Bearer ${t}` } : {};
+      };
+      const redirectToLogin = () => {
+        localStorage.removeItem("ls_token");
+        window.location.href = "/login.html";
+      };
+      const showForbidden = (inlineErrorEl = null) => {
+        const msg = "Keine Berechtigung für diese Aktion.";
+        if (inlineErrorEl) {
+          inlineErrorEl.textContent = msg;
+          inlineErrorEl.style.display = "block";
+          return;
+        }
+        alert(msg);
+      };
+      const handleWriteAuthStatus = (res, inlineErrorEl = null) => {
+        if (res.status === 401) {
+          redirectToLogin();
+          return true;
+        }
+        if (res.status === 403) {
+          showForbidden(inlineErrorEl);
+          return true;
+        }
+        return false;
+      };
+      function updateNav() {
+        const navAuth = document.getElementById("nav-auth");
+        if (getToken()) {
+          navAuth.innerHTML =
+            '<button id="logout-btn" class="btn btn-ghost btn-sm">Abmelden</button>';
+          document
+            .getElementById("logout-btn")
+            .addEventListener("click", redirectToLogin);
+        } else {
+          navAuth.innerHTML = '<a href="/login.html">Anmelden</a>';
+        }
+      }
+
       // ── API helpers ──────────────────────────────────────────────────────────
 
       const api = {
@@ -307,18 +355,23 @@
         createLink: (url) =>
           fetch("/api/links", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeaders() },
             body: JSON.stringify({ url }),
           }),
-        deleteLink: (code) => fetch(`/api/links/${code}`, { method: "DELETE" }),
+        deleteLink: (code) =>
+          fetch(`/api/links/${code}`, {
+            method: "DELETE",
+            headers: authHeaders(),
+          }),
         toggleLink: (code) =>
-          fetch(`/api/links/${code}/toggle`, { method: "PATCH" }).then((r) =>
-            r.json(),
-          ),
+          fetch(`/api/links/${code}/toggle`, {
+            method: "PATCH",
+            headers: authHeaders(),
+          }),
         updateLink: (code, url) =>
           fetch(`/api/links/${code}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeaders() },
             body: JSON.stringify({ url }),
           }),
       };
@@ -417,7 +470,8 @@
             row
               .querySelector(".js-toggle")
               ?.addEventListener("click", async () => {
-                await api.toggleLink(code);
+                const res = await api.toggleLink(code);
+                if (handleWriteAuthStatus(res)) return;
                 loadLinks();
               });
 
@@ -425,7 +479,8 @@
               .querySelector(".js-delete")
               ?.addEventListener("click", async () => {
                 if (!confirm(`Link "${code}" wirklich löschen?`)) return;
-                await api.deleteLink(code);
+                const res = await api.deleteLink(code);
+                if (handleWriteAuthStatus(res)) return;
                 loadLinks();
               });
           });
@@ -439,6 +494,7 @@
             const input = row.querySelector(".js-edit-input");
             if (!input.reportValidity()) return;
             const res = await api.updateLink(code, input.value);
+            if (handleWriteAuthStatus(res)) return;
             if (!res.ok) {
               alert("Ungültige URL.");
               return;
@@ -468,8 +524,16 @@
           resultEl.style.display = "none";
           submitBtn.disabled = true;
 
+          if (!getToken()) {
+            errorEl.textContent = "Bitte zuerst anmelden.";
+            errorEl.style.display = "block";
+            submitBtn.disabled = false;
+            return;
+          }
+
           try {
             const res = await api.createLink(urlInput.value);
+            if (handleWriteAuthStatus(res, errorEl)) return;
             const data = await res.json();
 
             if (!res.ok) {
@@ -508,11 +572,13 @@
           .replace(/&/g, "&amp;")
           .replace(/</g, "&lt;")
           .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
       }
 
       // ── Init ─────────────────────────────────────────────────────────────────
 
+      updateNav();
       loadLinks();
     </script>
   </body>

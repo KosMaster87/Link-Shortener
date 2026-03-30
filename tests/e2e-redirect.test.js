@@ -9,6 +9,7 @@
  * @module tests/e2e-redirect.test
  */
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { after, afterEach, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
 
@@ -19,14 +20,34 @@ const BASE = "http://localhost:3000";
 // DELETE FROM short_links würde Daten anderer Test-Dateien löschen und
 // dort FK-Violations oder fehlerhafte Zählungen verursachen.
 const createdCodes = [];
+const createdUserEmails = [];
+
+const registerTestUser = async () => {
+  const email = `redirect-${randomUUID()}@example.com`;
+  const res = await fetch(`${BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: "TestPass123" }),
+  });
+  assert.equal(res.status, 201);
+  createdUserEmails.push(email);
+  return res.json();
+};
 
 afterEach(async () => {
-  if (createdCodes.length === 0) return;
-  // ON DELETE CASCADE löscht link_clicks automatisch mit.
-  await pool.query("DELETE FROM short_links WHERE code = ANY($1)", [
-    createdCodes,
-  ]);
-  createdCodes.length = 0;
+  if (createdCodes.length > 0) {
+    // ON DELETE CASCADE löscht link_clicks automatisch mit.
+    await pool.query("DELETE FROM short_links WHERE code = ANY($1)", [
+      createdCodes,
+    ]);
+    createdCodes.length = 0;
+  }
+  if (createdUserEmails.length > 0) {
+    await pool.query("DELETE FROM users WHERE email = ANY($1)", [
+      createdUserEmails,
+    ]);
+    createdUserEmails.length = 0;
+  }
 });
 
 after(async () => {
@@ -40,11 +61,16 @@ describe("GET /{code} – Redirect", () => {
   // redirect: "manual" verhindert, dass fetch dem 302 automatisch folgt,
   // damit wir Status und Location-Header direkt prüfen können.
   it("leitet zur Original-URL weiter und trackt den Klick", async () => {
+    const { token } = await registerTestUser();
     const createRes = await fetch(`${BASE}/api/links`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ url: "https://example.com/target" }),
     });
+    assert.equal(createRes.status, 201);
     const { code } = await createRes.json();
     createdCodes.push(code);
 
@@ -75,11 +101,16 @@ describe("GET /{code} – Redirect", () => {
   // BOT-FILTER: Der Googlebot-UA soll von trackClick als is_bot=true markiert
   // werden. getStats filtert Bots per is_bot=FALSE – totalClicks muss 0 bleiben.
   it("zählt Bot-Traffic nicht in totalClicks", async () => {
+    const { token } = await registerTestUser();
     const createRes = await fetch(`${BASE}/api/links`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ url: "https://example.com/bot-test" }),
     });
+    assert.equal(createRes.status, 201);
     const { code } = await createRes.json();
     createdCodes.push(code);
 
@@ -99,11 +130,16 @@ describe("GET /{code} – Redirect", () => {
   // Parallel wäre schneller, aber race conditions auf dem Fire-and-forget-
   // Track könnten Klicks verschlucken – sequentiell ist deterministischer.
   it("zählt mehrere Klicks korrekt", async () => {
+    const { token } = await registerTestUser();
     const createRes = await fetch(`${BASE}/api/links`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ url: "https://example.com/multi" }),
     });
+    assert.equal(createRes.status, 201);
     const { code } = await createRes.json();
     createdCodes.push(code);
 

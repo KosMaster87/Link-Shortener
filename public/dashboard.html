@@ -49,6 +49,9 @@
       nav a:hover:not(.active) {
         color: #111827;
       }
+      #nav-auth {
+        margin-left: auto;
+      }
 
       /* ── Layout ── */
       main {
@@ -205,6 +208,26 @@
         align-items: center;
       }
 
+      /* ── Nav Button (Logout) ── */
+      .btn {
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .btn:hover {
+        opacity: 0.85;
+      }
+      .btn-ghost {
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .btn-sm {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+      }
+
       /* ── Empty / Error ── */
       .empty {
         text-align: center;
@@ -224,6 +247,7 @@
       <a href="/" class="logo">LinkShort</a>
       <a href="/">Links</a>
       <a href="/dashboard.html" class="active">Dashboard</a>
+      <span id="nav-auth"></span>
     </nav>
 
     <main>
@@ -276,6 +300,26 @@
     </main>
 
     <script>
+      // ── Auth ─────────────────────────────────────────────────────────────────
+
+      const getToken = () => localStorage.getItem("ls_token");
+      const redirectToLogin = () => {
+        localStorage.removeItem("ls_token");
+        window.location.href = "/login.html";
+      };
+      function updateNav() {
+        const navAuth = document.getElementById("nav-auth");
+        if (getToken()) {
+          navAuth.innerHTML =
+            '<button id="logout-btn" class="btn btn-ghost btn-sm">Abmelden</button>';
+          document
+            .getElementById("logout-btn")
+            .addEventListener("click", redirectToLogin);
+        } else {
+          navAuth.innerHTML = '<a href="/login.html">Anmelden</a>';
+        }
+      }
+
       // ── API ──────────────────────────────────────────────────────────────────
 
       const api = {
@@ -392,6 +436,7 @@
 
       // ── Init ─────────────────────────────────────────────────────────────────
 
+      updateNav();
       loadOverview();
       loadTopLinks();
       loadChart();

@@ -22,16 +22,12 @@ const send = (res, status, data) => {
 
 /**
  * Extrahiert die Client-IP aus dem Request.
- * Bevorzugt den ersten Eintrag aus x-forwarded-for (Reverse-Proxy),
- * fällt auf socket.remoteAddress zurück wenn der Header fehlt.
+ * Verwendet ausschließlich socket.remoteAddress — x-forwarded-for wird
+ * ignoriert, da er vom Client fälschbar ist (IP-Spoofing).
  * @param {import("node:http").IncomingMessage} req
  * @returns {string}
  */
-const extractIp = (req) => {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.socket.remoteAddress ?? "";
-};
+const extractIp = (req) => req.socket.remoteAddress ?? "";
 
 /**
  * Löst einen Short-Code zur Original-URL auf und sendet einen 302-Redirect.

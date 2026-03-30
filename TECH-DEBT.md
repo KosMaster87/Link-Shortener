@@ -91,6 +91,54 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 ---
 
+## P3 - Rate-Limit HTTP-Orchestrierung sauberer trennen
+
+**Datei:** `server.js`, spaeter `src/middleware/rate-limiter.js`
+
+**Befund:**
+
+- Die Sliding-Window-Logik liegt bereits sauber in `src/utils/rate-limit.js`.
+- Die HTTP-seitige Verdrahtung der Buckets (`general`, `createLink`, `login`) und das Senden von `429` liegen noch in `server.js`.
+- Fuer das kleine native-`node:http` Setup ist das aktuell ok, aber die Verantwortlichkeiten sind nicht ganz sauber getrennt.
+
+**Risiko:**
+
+- `server.js` wird mit jeder weiteren Security-Regel schwerer lesbar.
+- Rate-Limit-Policy und HTTP-Antwortlogik sind enger gekoppelt als noetig.
+
+**Plan (spaeter):**
+
+1. Kleinen HTTP-Helfer oder Middleware-Datei `src/middleware/rate-limiter.js` einfuehren.
+2. Funktion wie `applyRateLimit(req, res, bucket)` kapselt Bucket-Pruefung und `429`-Response.
+3. `server.js` reduziert sich auf Routing-Entscheidungen statt Limit-Details.
+4. Vorhandene Logik in `src/utils/rate-limit.js` unveraendert als technische Basis behalten.
+
+---
+
+## P3 - Legacy-Links ohne Besitzer bereinigen
+
+**Datei:** neues Script, z. B. `scripts/assign-orphan-links.js`
+
+**Befund:**
+
+- Durch die Migration auf User/Ownership koennen bestehende `short_links` mit `user_id = NULL` existieren.
+- Der aktuelle Ownership-Check ist korrekt strikt: `NULL !== user.id` und blockiert damit Bearbeiten/Loeschen solcher Links.
+- Das ist sicher, aber fuer Alt-Daten operativ unpraktisch.
+
+**Risiko:**
+
+- Vorhandene Legacy-Links bleiben dauerhaft herrenlos.
+- Admin/Owner koennen diese Links ohne Nachmigration nicht mehr pflegen.
+
+**Plan (spaeter):**
+
+1. Ein einmaliges Script bauen, das alle `short_links` mit `user_id = NULL` einem definierten Admin-User zuweist.
+2. Script soll den Admin per E-Mail suchen und bei fehlendem User sauber abbrechen.
+3. Vorher/Nachher Anzahl betroffener Links loggen.
+4. Kursentscheidung dokumentieren: Option A (Assignment-Script) statt NULL-Ausnahme im Ownership-Check.
+
+---
+
 ## Notizen
 
 - `idx_link_clicks_code` bleibt sinnvoll für Point-Lookups (z. B. Referrer pro Code).

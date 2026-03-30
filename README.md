@@ -1,95 +1,153 @@
-# 🔗 Link Shortener with Analytics
+# LinkShort
 
-> **KI Coding Mastery – 30-Day Project**
-> A web app that turns long URLs into short links, tracks every click, and displays statistics in a dashboard.
+KI Coding Mastery course project (Tag 13 state).
 
----
+LinkShort is a URL shortener with analytics, dashboard reporting, authentication, and ownership-based access control.
 
-## 🎯 What does this project do?
+## Features
 
-- **Shorten URLs** – Long links are converted into compact short URLs
-- **Track clicks** – Every visit is stored with timestamp, referrer, and device info
-- **Analytics Dashboard** – Overview of click counts, traffic sources, and time-based distribution
+- Create short links from long URLs
+- Redirect via short code (`GET /:code`)
+- Track clicks (referrer, user agent, bot filtering)
+- Analytics endpoints and dashboard metrics
+- Authentication with JWT (`register` and `login`)
+- Ownership protection for write operations
+- Rate limiting and security headers
 
----
+## Tech Stack
 
-## 🛠️ Tech Stack
+| Layer    | Technology                  |
+| -------- | --------------------------- |
+| Runtime  | Node.js (ESM)               |
+| API      | Native `node:http`          |
+| Database | PostgreSQL (`pg`, raw SQL)  |
+| Frontend | HTML/CSS/Vanilla JavaScript |
+| Tests    | `node:test` + `node:assert` |
 
-| Layer    | Technology                        |
-| -------- | --------------------------------- |
-| Runtime  | Node.js (ESM, `"type": "module"`) |
-| Database | PostgreSQL                        |
-| API      | REST (HTTP)                       |
-| Frontend | HTML / CSS / Vanilla JS           |
-
----
-
-## 📁 Project Structure
+## Project Structure
 
 ```text
 link-shortener/
-├── server.js            # HTTP server entry point
+├── server.js
 ├── src/
-│   ├── routes/          # Route handlers (HTTP layer)
-│   │   ├── links.js     # GET /api/links, POST /api/links, DELETE /api/links/:code
-│   │   ├── redirect.js  # GET /:code (redirect)
-│   │   ├── analytics.js # GET /api/links/:code/clicks
-│   │   └── dashboard.js # GET /api/dashboard/*
-│   ├── services/        # Business logic
+│   ├── db/
+│   │   ├── index.js
+│   │   ├── schema.sql
+│   │   └── migrations/
+│   │       └── 002_add_users.sql
+│   ├── middleware/
+│   │   └── auth.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── links.js
+│   │   ├── redirect.js
+│   │   ├── analytics.js
+│   │   └── dashboard.js
+│   ├── services/
+│   │   ├── auth-service.js
 │   │   ├── link-service.js
 │   │   ├── analytics-service.js
 │   │   └── dashboard-service.js
-│   ├── db/              # Database
-│   │   ├── schema.sql   # CREATE TABLE statements
-│   │   └── index.js     # pg Pool setup
 │   └── utils/
-│       └── result.js    # ok() / err() helpers
-├── public/              # Static frontend files
+│       ├── jwt.js
+│       ├── rate-limit.js
+│       └── result.js
+├── public/
+│   ├── index.html
+│   ├── login.html
+│   ├── dashboard.html
+│   ├── app.js
+│   └── style.css
+├── tests/
+│   ├── link-service.test.js
+│   ├── analytics-service.test.js
+│   └── e2e-redirect.test.js
+├── .env.example
 ├── package.json
 └── README.md
 ```
 
-> Structure grows with the course – extended daily.
+## API Access Rules
 
----
+- Public:
+  - `GET /:code`
+  - `GET /api/links/:code/clicks`
+- Protected (login required):
+  - `POST /api/links`
+  - `PUT /api/links/:code`
+  - `PATCH /api/links/:code/toggle`
+  - `DELETE /api/links/:code`
+- Ownership rule:
+  - User A can only modify links owned by User A.
+  - User B receives `403 FORBIDDEN` for links owned by User A.
 
-## 🚀 Quick Start
+## Security Notes
 
-```bash
-# Install dependencies (once available)
-npm install
+- Password hashing: async `crypto.scrypt` (`salt:hash` format)
+- JWT signing: HMAC-SHA256 via `node:crypto`
+- Token TTL: 24 hours
+- Login errors are generic (`INVALID_CREDENTIALS`) to avoid user enumeration
+- Rate limits:
+  - `general`: 100/min
+  - `createLink`: 10/min
+  - `login`: 5/min
+- Body size limit (`413`) and security headers enabled
 
-# Start development server
-npm start
-```
+## Quick Start
 
 Requirements:
 
-- Node.js ≥ 20
-- PostgreSQL (local or Docker) – see [Day 2 setup](https://nodejs.org)
+- Node.js 20+
+- PostgreSQL
 
----
+Setup:
 
-## 📅 Course Progress
+```bash
+npm install
+cp .env.example .env
+```
 
-| Day    | Topic                                    | Status |
-| ------ | ---------------------------------------- | ------ |
-| Day 0  | Setup & Project Definition               | ✅     |
-| Day 1  | CLAUDE.md & Project Configuration        | ✅     |
-| Day 2  | Architecture, Database & Server Skeleton | ✅     |
-| Day 3  | First Feature: URL Shortening            | ✅     |
-| Day 4  | Iteration & Refactoring                  | ✅     |
-| Day 5  | Feature #2: TDD with Analytics Service   | ✅     |
-| Day 6  | Custom Commands & Reusable Workflows     | ✅     |
-| Day 7  | Integration, E2E and Frontend Polish     | ✅     |
-| Day 8  | Context Management & Token Awareness     | ✅     |
-| Day 9  | MCP Server with Direct Database Access   | ✅     |
-| Day 10 | Feature #3: Analytics Dashboard via MCP  | ✅     |
-| Day 11 | Error Handling & Edge Cases              | ✅     |
+Edit `.env` and set at least:
 
----
+```env
+JWT_SECRET=replace-with-a-long-random-string
+```
 
-## 👨‍💻 Developer
+Start the server:
 
-**Konstantin Aksenov**
-🔗 [GitHub](https://github.com/KosMaster87) · 📧 [Konstantin.Aksenov@dev2k.org](mailto:Konstantin.Aksenov@dev2k.org)
+```bash
+npm start
+```
+
+Run tests:
+
+```bash
+npm test
+```
+
+The npm scripts load `.env` automatically via `node --env-file-if-exists=.env`.
+
+## Course Progress
+
+| Day    | Topic                                   | Status |
+| ------ | --------------------------------------- | ------ |
+| Day 0  | Setup and project definition            | Done   |
+| Day 1  | CLAUDE.md and project configuration     | Done   |
+| Day 2  | Architecture, database, server skeleton | Done   |
+| Day 3  | URL shortening feature                  | Done   |
+| Day 4  | Iteration and refactoring               | Done   |
+| Day 5  | TDD analytics service                   | Done   |
+| Day 6  | Commands and reusable workflows         | Done   |
+| Day 7  | Integration, E2E, frontend polish       | Done   |
+| Day 8  | Context and token awareness             | Done   |
+| Day 9  | MCP server with direct database access  | Done   |
+| Day 10 | Analytics dashboard via MCP             | Done   |
+| Day 11 | Error handling and edge cases           | Done   |
+| Day 12 | Performance and optimization            | Done   |
+| Day 13 | Security review and authentication      | Done   |
+
+## Developer
+
+Konstantin Aksenov
+GitHub: https://github.com/KosMaster87
+Email: Konstantin.Aksenov@dev2k.org

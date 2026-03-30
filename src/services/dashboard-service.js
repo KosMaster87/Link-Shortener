@@ -134,10 +134,7 @@ export const getOverviewStats = async () => {
   try {
     const { rows } = await queryOverview();
     if (!rows[0])
-      return err({
-        code: "DB_ERROR",
-        message: "Overview query returned no rows",
-      });
+      return err({ code: "DB_ERROR", message: "Datenbankfehler." });
     const { total_links, total_clicks } = rows[0];
     const avg_clicks_per_link =
       total_links === 0
@@ -146,7 +143,7 @@ export const getOverviewStats = async () => {
     return ok({ total_links, total_clicks, avg_clicks_per_link });
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err({ code: "DB_ERROR", message: error.message });
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
   }
 };
 
@@ -163,7 +160,7 @@ export const getTopLinks = async (limit) => {
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err({ code: "DB_ERROR", message: error.message });
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
   }
 };
 
@@ -180,7 +177,7 @@ export const getClicksPerDay = async (days) => {
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err({ code: "DB_ERROR", message: error.message });
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
   }
 };
 
@@ -193,11 +190,11 @@ export const getClicksPerDay = async (days) => {
 export const getReferrerBreakdown = async (code) => {
   try {
     if (!(await codeExists(code)))
-      return err({ code: "NOT_FOUND", message: `Code not found: ${code}` });
+      return err({ code: "NOT_FOUND", message: "Nicht gefunden." });
     const { rows } = await queryReferrers(code);
     return ok(rows);
   } catch (error) {
     console.error("dashboard-service error:", error);
-    return err({ code: "DB_ERROR", message: error.message });
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
   }
 };

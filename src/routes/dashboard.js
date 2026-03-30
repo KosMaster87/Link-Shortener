@@ -14,6 +14,7 @@ import {
 const DEFAULT_LIMIT = 10;
 const DEFAULT_DAYS = 30;
 const ERROR_STATUS = { DB_ERROR: 500, NOT_FOUND: 404, INVALID_INPUT: 400 };
+const INTERNAL_CODES = new Set(["DB_ERROR", "UNEXPECTED"]);
 
 /**
  * Serialisiert data als JSON und sendet die Response mit dem gegebenen Status.
@@ -34,11 +35,13 @@ const send = (res, status, data) => {
  * @returns {void}
  */
 const sendResult = (res, result) => {
-  if (!result.success)
+  if (!result.success) {
+    const isInternal = INTERNAL_CODES.has(result.error.code);
     return send(res, ERROR_STATUS[result.error.code] ?? 500, {
       error: result.error.code,
-      message: result.error.message,
+      ...(isInternal ? {} : { message: result.error.message }),
     });
+  }
   return send(res, 200, result.data);
 };
 

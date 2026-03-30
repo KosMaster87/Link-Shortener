@@ -136,3 +136,72 @@ const avg_clicks_per_link =
 ```
 
 Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
+
+## Security Patterns (Tag 13)
+
+### Authentication
+
+- Auth-Routen: `POST /api/auth/register` und `POST /api/auth/login`
+- Passwort-Hashing: `node:crypto` `scrypt` (async), Format `salt:hash`
+- Token: JWT per HMAC-SHA256, Secret aus `JWT_SECRET`
+- Token-TTL für das MVP: 24 Stunden, kein Refresh-Token
+- Login-Fehler immer generisch: `Ungültige Anmeldedaten.`
+- Kein Leak, ob die E-Mail existiert oder nur das Passwort falsch ist (User-Enumeration vermeiden)
+
+### Authorization
+
+- Schreib-Operationen nur mit Auth: `POST/PUT/PATCH/DELETE /api/links*`
+- `401` bei fehlender/ungültiger Authentifizierung
+- Ownership-Check vor Änderung/Löschung: `link.userId === req.user.id`
+- `403` bei fremden Ressourcen (`FORBIDDEN`)
+
+### Input Validation
+
+- URLs nur mit `http:` oder `https:`
+- Gefährliche/interne Ziele blocken: `localhost`, `127.0.0.1`, `0.0.0.0`, `::1`
+- Alias-Limit aktiv (`ALIAS_MAX_LENGTH`), reservierte Slugs blockieren
+- Validierung früh im Service, vor DB-Zugriff
+
+### SQL-Queries
+
+- Ausschließlich parameterisierte Queries (`$1`, `$2`, ...)
+- Keine SQL-String-Interpolation mit User-Input
+- User-IDs als UUID (`gen_random_uuid()`)
+
+### Rate Limiting
+
+- In-Memory Sliding Window in `src/utils/rate-limit.js`
+- Buckets:
+  - `general`: `100/min`
+  - `createLink`: `10/min`
+  - `login`: `5/min`
+- Bei Überschreitung: `429 RATE_LIMITED`
+
+### Security Headers
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: no-referrer`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+
+### Data Exposure
+
+- Production-Fehlerantworten generisch (`INTERNAL_ERROR`)
+- Stacktraces nur in Development-Logs
+- Keine Tokens/Secrets/Passwörter in Logs oder Responses
+- Frontend darf eigene Notifications rendern, soll aber bei Auth/Security nur generische UI-Texte verwenden
+- Regel: `code` für UI-Flow/Verhalten, `message` nur direkt anzeigen wenn sie bereits bewusst sicher formuliert ist
+
+### Environment Config
+
+- Lokale Secrets liegen in `.env` im Projekt-Root und werden nicht committed
+- Commitbare Vorlage ist `.env.example`
+- npm-Skripte laden `.env` nativ via `node --env-file-if-exists=.env`
+
+### Security Verification (DoD)
+
+- Unauthentifizierte Schreibroute liefert `401`
+- Fremder User auf fremden Link liefert `403`
+- Oversized Body liefert `413`
+- Rate-Limit liefert `429`
+- Redirect- und Service-Tests grün (`npm run test`)

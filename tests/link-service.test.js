@@ -6,6 +6,7 @@
  * @module tests/link-service.test
  */
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { after, afterEach, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
 import {
@@ -21,13 +22,19 @@ import {
 // Warum: Jeder Test soll auf einem sauberen Zustand aufbauen, damit
 // Testergebnisse nicht von der Reihenfolge der Ausführung abhängen.
 const createdCodes = [];
+const createdUserIds = [];
 
 afterEach(async () => {
-  if (createdCodes.length === 0) return;
-  await pool.query("DELETE FROM short_links WHERE code = ANY($1)", [
-    createdCodes,
-  ]);
-  createdCodes.length = 0;
+  if (createdCodes.length > 0) {
+    await pool.query("DELETE FROM short_links WHERE code = ANY($1)", [
+      createdCodes,
+    ]);
+    createdCodes.length = 0;
+  }
+  if (createdUserIds.length > 0) {
+    await pool.query("DELETE FROM users WHERE id = ANY($1)", [createdUserIds]);
+    createdUserIds.length = 0;
+  }
 });
 
 // Verbindung schließen, damit der Node-Prozess sauber beendet wird.
@@ -270,9 +277,15 @@ describe("getInactiveLinks", () => {
   });
 
   // LEERE DATENBANK: afterEach räumt alle Links weg – nach einem isolierten
-  // Test ohne Setup gibt getInactiveLinks ein leeres Array zurück, keinen Fehler.
+  // Test ohne eigene Links gibt getInactiveLinks für einen frischen User ein
+  // leeres Array zurück, unabhängig von Fremddaten in der Entwicklungs-DB.
   it("gibt leeres Array zurück wenn keine Links existieren", async () => {
-    const result = await getInactiveLinks(7);
+    const { rows } = await pool.query(
+      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
+      [`inactive-${randomUUID()}@example.com`, "test-hash"],
+    );
+    createdUserIds.push(rows[0].id);
+    const result = await getInactiveLinks(7, rows[0].id);
 
     assert.equal(result.success, true);
     assert.equal(result.data.length, 0);
