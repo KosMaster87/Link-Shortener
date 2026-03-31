@@ -1,28 +1,92 @@
 # LinkShort
 
-KI Coding Mastery course project (Tag 13 state).
-
-LinkShort is a URL shortener with analytics, dashboard reporting, authentication, and ownership-based access control.
+A minimal URL shortener built with Node.js and PostgreSQL. Create short links, track clicks, and view analytics in a dashboard.
 
 ## Features
 
-- Create short links from long URLs
-- Redirect via short code (`GET /:code`)
-- Track clicks (referrer, user agent, bot filtering)
-- Analytics endpoints and dashboard metrics
-- Authentication with JWT (`register` and `login`)
-- Ownership protection for write operations
-- Rate limiting and security headers
+- Create short links with optional custom slug
+- Click tracking with referrer, user-agent, and bot detection
+- Dashboard: overview stats, clicks per day, top links, referrer breakdown
+- JWT authentication (register/login)
+- Rate limiting per IP, security headers, input validation
 
-## Tech Stack
+## Installation
 
-| Layer    | Technology                  |
-| -------- | --------------------------- |
-| Runtime  | Node.js (ESM)               |
-| API      | Native `node:http`          |
-| Database | PostgreSQL (`pg`, raw SQL)  |
-| Frontend | HTML/CSS/Vanilla JavaScript |
-| Tests    | `node:test` + `node:assert` |
+```bash
+# 1. Clone & install
+git clone https://github.com/KosMaster87/link-shortener.git && cd link-shortener
+npm install
+
+# 2. Create PostgreSQL database
+createdb linkshort
+
+# 3. Apply schema
+psql linkshort < src/db/schema.sql
+psql linkshort < src/db/migrations/002_add_users.sql
+
+# 4. Configure environment
+cp .env.example .env
+# Generate a JWT_SECRET:
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Paste the output as JWT_SECRET in .env
+
+# 5. Start
+npm start
+```
+
+Server runs on `http://localhost:3000`.
+
+## Configuration
+
+Copy `.env.example` to `.env`:
+
+```env
+JWT_SECRET=replace-with-a-long-random-string
+PGDATABASE=linkshort        # PostgreSQL database name
+# PORT=3000                 # optional, default 3000
+# NODE_ENV=development      # production suppresses stack traces
+```
+
+PostgreSQL connects via Unix socket (`/var/run/postgresql`). Override host, port, and user via standard `PGHOST`, `PGPORT`, `PGUSER` env vars.
+
+## Testing
+
+```bash
+npm test
+```
+
+Requires a running PostgreSQL instance with the `linkshort` database.
+
+## API
+
+### Auth
+
+| Method | Path               | Body                  | Response          |
+| ------ | ------------------ | --------------------- | ----------------- |
+| POST   | /api/auth/register | `{ email, password }` | `{ token, user }` |
+| POST   | /api/auth/login    | `{ email, password }` | `{ token, user }` |
+
+### Links
+
+All write operations require `Authorization: Bearer <token>`.
+
+| Method | Path                    | Body / Params    | Response       |
+| ------ | ----------------------- | ---------------- | -------------- |
+| GET    | /api/links              | —                | Array of links |
+| POST   | /api/links              | `{ url, slug? }` | Created link   |
+| PUT    | /api/links/:code        | `{ url }`        | Updated link   |
+| PATCH  | /api/links/:code/toggle | —                | Toggled link   |
+| DELETE | /api/links/:code        | —                | 204 No Content |
+| GET    | /:code                  | —                | 302 Redirect   |
+
+### Dashboard
+
+| Method | Path                          | Query Params  |
+| ------ | ----------------------------- | ------------- |
+| GET    | /api/dashboard/overview       | —             |
+| GET    | /api/dashboard/top-links      | limit (1–100) |
+| GET    | /api/dashboard/clicks-per-day | days (1–365)  |
+| GET    | /api/dashboard/referrer/:code | —             |
 
 ## Project Structure
 
@@ -67,66 +131,6 @@ link-shortener/
 └── README.md
 ```
 
-## API Access Rules
-
-- Public:
-  - `GET /:code`
-  - `GET /api/links/:code/clicks`
-- Protected (login required):
-  - `POST /api/links`
-  - `PUT /api/links/:code`
-  - `PATCH /api/links/:code/toggle`
-  - `DELETE /api/links/:code`
-- Ownership rule:
-  - User A can only modify links owned by User A.
-  - User B receives `403 FORBIDDEN` for links owned by User A.
-
-## Security Notes
-
-- Password hashing: async `crypto.scrypt` (`salt:hash` format)
-- JWT signing: HMAC-SHA256 via `node:crypto`
-- Token TTL: 24 hours
-- Login errors are generic (`INVALID_CREDENTIALS`) to avoid user enumeration
-- Rate limits:
-  - `general`: 100/min
-  - `createLink`: 10/min
-  - `login`: 5/min
-- Body size limit (`413`) and security headers enabled
-
-## Quick Start
-
-Requirements:
-
-- Node.js 20+
-- PostgreSQL
-
-Setup:
-
-```bash
-npm install
-cp .env.example .env
-```
-
-Edit `.env` and set at least:
-
-```env
-JWT_SECRET=replace-with-a-long-random-string
-```
-
-Start the server:
-
-```bash
-npm start
-```
-
-Run tests:
-
-```bash
-npm test
-```
-
-The npm scripts load `.env` automatically via `node --env-file-if-exists=.env`.
-
 ## Course Progress
 
 | Day    | Topic                                   | Status |
@@ -145,6 +149,7 @@ The npm scripts load `.env` automatically via `node --env-file-if-exists=.env`.
 | Day 11 | Error handling and edge cases           | Done   |
 | Day 12 | Performance and optimization            | Done   |
 | Day 13 | Security review and authentication      | Done   |
+| Day 14 | Documentation                           | Done   |
 
 ## Developer
 
