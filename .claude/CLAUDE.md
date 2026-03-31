@@ -205,3 +205,30 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Oversized Body liefert `413`
 - Rate-Limit liefert `429`
 - Redirect- und Service-Tests grün (`npm run test`)
+
+## Documentation Standards
+
+### README
+
+- Bei Feature-Änderungen aktualisieren
+- Installation-Steps bei jedem Release testen (Copy-Paste-Test)
+- API-Beispiele müssen funktionieren
+
+### Code Comments
+
+- Erkläre WARUM, nicht WAS
+- Prefixes: `TODO`, `FIXME`, `HACK`, `NOTE`
+- Keine auskommentierten Code-Blöcke
+
+### JSDoc
+
+- Alle public exports dokumentieren
+- `@param` mit Typ und Beschreibung
+- `@returns` spiegelt Result-Pattern wider: `{ success: true, data: T } | { success: false, error: { code: string, message: string } }`
+- `@example` bei komplexen Methoden
+
+### Was NICHT dokumentieren
+
+- Offensichtlicher Code (getters, simple loops)
+- Implementation Details die sich ändern können
+- Private Hilfsfunktionen

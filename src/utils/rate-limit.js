@@ -25,6 +25,7 @@ const cleanup = () => {
   }
 };
 
+// .unref() prevents this timer from keeping the process alive — important for test runs.
 setInterval(cleanup, CLEANUP_INTERVAL_MS).unref();
 
 /**
@@ -50,5 +51,6 @@ export const isAllowed = (ip, bucket, config) => {
 export const LIMITS = {
   general: { max: 100, windowMs: 60_000 },
   createLink: { max: 10, windowMs: 60_000 },
+  // Tight limit to slow brute-force attacks; 5 wrong attempts/min per IP is already generous.
   login: { max: 5, windowMs: 60_000 },
 };

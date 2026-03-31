@@ -128,13 +128,12 @@ const validateDays = (days) => {
 /**
  * Gibt globale Übersichtszahlen zurück: aktive Links, Gesamtklicks (ohne Bots),
  * Ø Klicks pro aktivem Link.
- * @returns {Promise<{ success: true, data: OverviewStats } | { success: false, error: object }>}
+ * @returns {Promise<{ success: true, data: OverviewStats } | { success: false, error: { code: string, message: string } }>}
  */
 export const getOverviewStats = async () => {
   try {
     const { rows } = await queryOverview();
-    if (!rows[0])
-      return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+    if (!rows[0]) return err({ code: "DB_ERROR", message: "Datenbankfehler." });
     const { total_links, total_clicks } = rows[0];
     const avg_clicks_per_link =
       total_links === 0
@@ -150,7 +149,7 @@ export const getOverviewStats = async () => {
 /**
  * Gibt Links absteigend nach Klickzahl zurück. Links mit 0 Klicks erscheinen am Ende.
  * @param {number} limit - Maximale Anzahl Einträge (1–100)
- * @returns {Promise<{ success: true, data: TopLink[] } | { success: false, error: object }>}
+ * @returns {Promise<{ success: true, data: TopLink[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getTopLinks = async (limit) => {
   const validation = validateLimit(limit);
@@ -167,7 +166,7 @@ export const getTopLinks = async (limit) => {
 /**
  * Gibt Klicks pro Tag für die letzten n Tage zurück (UTC-normiert).
  * @param {number} days - Anzahl Tage zurück ab jetzt (1–365)
- * @returns {Promise<{ success: true, data: DayCount[] } | { success: false, error: object }>}
+ * @returns {Promise<{ success: true, data: DayCount[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getClicksPerDay = async (days) => {
   const validation = validateDays(days);
@@ -185,7 +184,7 @@ export const getClicksPerDay = async (days) => {
  * Gibt Referrer-Verteilung für einen Link zurück. Null-Referrer erscheinen als "direct".
  * Gibt NOT_FOUND zurück wenn der Code nicht existiert.
  * @param {string} code - Short-Link-Code
- * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: object }>}
+ * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getReferrerBreakdown = async (code) => {
   try {

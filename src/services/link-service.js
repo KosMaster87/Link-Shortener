@@ -23,6 +23,8 @@ import { err, ok } from "../utils/result.js";
  */
 
 const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+// These slug names conflict with server routes — /api, /dashboard etc. would
+// be intercepted by the router before the redirect handler runs.
 const RESERVED = new Set([
   "api",
   "admin",
@@ -32,6 +34,7 @@ const RESERVED = new Set([
   "static",
 ]);
 const SLUG_LENGTH = 6;
+// 3 is enough: at 62^6 ≈ 56B slots, consecutive collisions signal a bug, not bad luck.
 const MAX_SLUG_ATTEMPTS = 3;
 const ALIAS_MAX_LENGTH = 50;
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
@@ -132,9 +135,9 @@ const insertLink = async (code, url, userId) => {
  * Gibt INVALID_URL zurück wenn die URL kein sicheres http/https-Format hat.
  * Gibt SLUG_TAKEN zurück wenn alias vergeben/reserviert ist oder kein
  * freier zufälliger Slug gefunden werden konnte.
- * @param {import("./link-service.js").CreateLinkInput} input - URL, optionaler Alias
+ * @param {CreateLinkInput} input - URL, optionaler Alias
  * @param {string | null} userId - UUID des eingeloggten Users
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: Object }>}
+ * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
 export const createLink = async ({ url, alias } = {}, userId = null) => {
   if (!isValidUrl(url)) return err("INVALID_URL");
@@ -152,7 +155,7 @@ export const createLink = async ({ url, alias } = {}, userId = null) => {
  * Sucht einen Short-Link anhand seines Codes in der DB.
  * Gibt NOT_FOUND zurück wenn kein Eintrag mit diesem Code existiert.
  * @param {string} code - 6-stelliger alphanumerischer Slug
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
 export const getLink = async (code) => {
   const result = await pool.query("SELECT * FROM short_links WHERE code = $1", [
@@ -166,7 +169,7 @@ export const getLink = async (code) => {
  * Lädt alle Short-Links eines Users aus der DB (nach created_at DESC).
  * Ohne userId werden alle Links zurückgegeben (Backward-Compat für Public-GET).
  * @param {string | null} userId
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link[] }>}
+ * @returns {Promise<{ success: true, data: Link[] }>}
  */
 export const getAllLinks = async (userId = null) => {
   const result = userId
@@ -182,7 +185,7 @@ export const getAllLinks = async (userId = null) => {
  * Löscht den Short-Link mit dem gegebenen Code aus der DB.
  * Gibt NOT_FOUND zurück wenn kein Eintrag mit diesem Code existiert.
  * @param {string} code - 6-stelliger alphanumerischer Slug
- * @returns {Promise<{ success: true, data: undefined } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: undefined } | { success: false, error: { code: string, message: string } }>}
  */
 export const deleteLink = async (code) => {
   const result = await pool.query(
@@ -199,7 +202,7 @@ export const deleteLink = async (code) => {
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * @param {string} code - 6-stelliger alphanumerischer Slug
  * @param {string} url - Neue Ziel-URL
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
 export const updateLink = async (code, url) => {
   if (!isValidUrl(url)) return err("INVALID_URL");
@@ -219,11 +222,13 @@ export const updateLink = async (code, url) => {
  * Gibt INVALID_DAYS zurück wenn `days` keine positive ganze Zahl ist.
  * @param {number} days - Zeitraum in Tagen (muss > 0 sein)
  * @param {string | null} userId - Optionaler Besitzer-Filter
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link[] } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: Link[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getInactiveLinks = async (days, userId = null) => {
   if (!Number.isInteger(days) || days <= 0) return err("INVALID_DAYS");
   const start = performance.now();
+  // Time filter in ON, not WHERE — keeps links with zero matching clicks in the result set.
+  // Moving this to WHERE would turn the LEFT JOIN into an INNER JOIN.
   const query = userId
     ? `SELECT sl.* FROM short_links sl
        LEFT JOIN link_clicks lc
@@ -251,7 +256,7 @@ export const getInactiveLinks = async (days, userId = null) => {
  * Schaltet is_active eines Short-Links um (true → false, false → true).
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * @param {string} code - 6-stelliger alphanumerischer Slug
- * @returns {Promise<{ success: true, data: import("./link-service.js").Link } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
 export const toggleActive = async (code) => {
   const result = await pool.query(
