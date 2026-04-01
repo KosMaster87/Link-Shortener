@@ -150,6 +150,7 @@ link-shortener/
 | Day 12 | Performance and optimization            | Done   |
 | Day 13 | Security review and authentication      | Done   |
 | Day 14 | Documentation                           | Done   |
+| Day 15 | Hooks and automatic quality             | Done   |
 
 ## Developer
 

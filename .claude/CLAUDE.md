@@ -206,6 +206,35 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Rate-Limit liefert `429`
 - Redirect- und Service-Tests grün (`npm run test`)
 
+## Automatische Qualitätschecks
+
+### Was Claude automatisch ausführt (PostToolUse Hooks)
+
+Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
+
+| Check        | Tool               | Scope              |
+| ------------ | ------------------ | ------------------ |
+| Formatierung | `prettier --write` | geänderte Datei    |
+| Linting      | `eslint --fix`     | geänderte Datei    |
+| Tests        | `node --test`      | gesamte Test-Suite |
+
+### Was vor jedem git commit läuft (lint-staged via Husky)
+
+- `*.js` → `prettier --write` + `eslint --fix`
+- Bei ESLint-Errors wird der Commit abgebrochen
+
+### Was manuell bleibt
+
+- Datenbankmigrationen
+- `git push` / Deployment
+- `npm run lint` für vollständigen Projekt-Lint außerhalb von Claude
+
+### Konfiguration
+
+- Claude Hooks: `.claude/settings.local.json`
+- Git Hooks: `.husky/pre-commit` + `lint-staged` in `package.json`
+- ESLint: `eslint.config.js`
+
 ## Documentation Standards
 
 ### README

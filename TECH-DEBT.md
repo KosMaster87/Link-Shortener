@@ -144,3 +144,62 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 - `idx_link_clicks_code` bleibt sinnvoll für Point-Lookups (z. B. Referrer pro Code).
 - Für Vollaggregationen (`getTopLinks`) ist der Haupthebel nicht der Index, sondern Voraggregation (Materialized View).
 - `clicks-per-day` Datum-Serialisierung wurde bereits auf stabiles `YYYY-MM-DD` gefixt.
+
+## P2 - Claude Hooks robust machen und projektweit standardisieren
+
+**Datei:** `.claude/settings.local.json` (später optional `.claude/settings.json` für Team-Default)
+
+**Befund:**
+
+- Hook-Setup ist vorhanden, aber sollte als standardisierte Qualitäts-Pipeline dokumentiert und stabil gehalten werden.
+- Ziel: Bei jeder Dateiänderung automatisch formatieren/linten/testen; riskante Bash-Kommandos vor Ausführung prüfen.
+
+**Geplante Konfiguration (Referenz):**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'set -f; for f in $CLAUDE_FILE_PATHS; do npx prettier --write \"$f\" --log-level error; done'"
+          },
+          {
+            "type": "command",
+            "command": "sh -c 'set -f; for f in $CLAUDE_FILE_PATHS; do case \"$f\" in *.js|*.mjs|*.cjs|*.jsx|*.ts|*.tsx) npx eslint \"$f\" --fix --quiet ;; esac; done'"
+          },
+          {
+            "type": "command",
+            "command": "node --test 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'rm -rf'; then echo 'Gefährlicher Befehl blockiert' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Risiko:**
+
+- Ohne Standardisierung kann das Verhalten zwischen lokalen Setups variieren.
+- Globales `node --test` nach jedem Edit kann bei wachsender Test-Suite spürbar langsamer werden.
+
+**Plan (später):**
+
+1. Hook-Verhalten in `CLAUDE.md` als Projektstandard dokumentieren.
+2. Optional: von `settings.local.json` auf versionierte Team-Defaults umstellen.
+3. Test-Hook später auf selektive Tests oder schnellen Smoke-Test optimieren.
