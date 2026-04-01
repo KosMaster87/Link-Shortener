@@ -6,9 +6,26 @@
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --env-file-if-exists=.env --test --test-concurrency=1",
     "test-link-service": "node --env-file-if-exists=.env --test tests/link-service.test.js",
-    "test-analytics-service": "node --env-file-if-exists=.env --test tests/analytics-service.test.js"
+    "test-analytics-service": "node --env-file-if-exists=.env --test tests/analytics-service.test.js",
+    "lint": "eslint .",
+    "prepare": "husky"
   },
   "dependencies": {
     "pg": "^8.13.3"
+  },
+  "devDependencies": {
+    "eslint": "^10.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1"
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }
