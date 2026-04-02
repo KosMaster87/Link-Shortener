@@ -57,7 +57,12 @@ const clientIp = (req) => req.socket.remoteAddress ?? "unknown";
  */
 const sendTooManyRequests = (res) => {
   res.writeHead(429, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ error: "RATE_LIMITED", message: "Zu viele Anfragen. Bitte warten." }));
+  res.end(
+    JSON.stringify({
+      error: "RATE_LIMITED",
+      message: "Zu viele Anfragen. Bitte warten.",
+    }),
+  );
 };
 
 /**
@@ -77,7 +82,12 @@ const parseBody = (req, res) =>
       if (Buffer.byteLength(raw) > BODY_LIMIT_BYTES) {
         aborted = true;
         res.writeHead(413, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: "PAYLOAD_TOO_LARGE", message: "Request-Body zu groß (max. 16 KB)." }));
+        res.end(
+          JSON.stringify({
+            error: "PAYLOAD_TOO_LARGE",
+            message: "Request-Body zu groß (max. 16 KB).",
+          }),
+        );
         resolve(null);
       }
     });
@@ -148,7 +158,10 @@ const handleStats = async (res, slug) => {
 const routeDashboard = async (req, res, method, path) => {
   const referrerMatch = path.match(/^\/api\/dashboard\/referrer\/([^/]+)$/);
   if (method === "GET" && referrerMatch)
-    return await handleDashboard(req, res, { sub: "referrer", code: referrerMatch[1] });
+    return await handleDashboard(req, res, {
+      sub: "referrer",
+      code: referrerMatch[1],
+    });
   const subMatch = path.match(/^\/api\/dashboard\/([^/]+)$/);
   if (method === "GET" && subMatch)
     return await handleDashboard(req, res, { sub: subMatch[1] });
@@ -190,13 +203,16 @@ const routeApi = async (req, res, method, path) => {
   }
 
   // Allgemeines Rate-Limit
-  if (!isAllowed(ip, "general", LIMITS.general)) return sendTooManyRequests(res);
+  if (!isAllowed(ip, "general", LIMITS.general))
+    return sendTooManyRequests(res);
 
   // Links: GET öffentlich, Schreibops erfordern Auth
-  if (method === "GET" && path === "/api/links") return await handleLinks(req, res, {});
+  if (method === "GET" && path === "/api/links")
+    return await handleLinks(req, res, {});
 
   if (method === "POST" && path === "/api/links") {
-    if (!isAllowed(ip, "createLink", LIMITS.createLink)) return sendTooManyRequests(res);
+    if (!isAllowed(ip, "createLink", LIMITS.createLink))
+      return sendTooManyRequests(res);
     const authed = await checkAuth(req, res);
     if (!authed) return;
     return await handleLinks(req, res, {});
@@ -221,7 +237,8 @@ const routeApi = async (req, res, method, path) => {
     return await handleAnalytics(req, res, { code: clicksMatch[1] });
 
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
-  if (method === "GET" && statsMatch) return await handleStats(res, statsMatch[1]);
+  if (method === "GET" && statsMatch)
+    return await handleStats(res, statsMatch[1]);
 
   if (path.startsWith("/api/dashboard/"))
     return await routeDashboard(req, res, method, path);

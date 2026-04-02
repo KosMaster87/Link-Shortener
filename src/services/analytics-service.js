@@ -113,17 +113,11 @@ const insertClick = async ({
 };
 
 /**
- * Speichert einen Klick für den angegebenen Short-Link.
- * Gibt NOT_FOUND zurück wenn kein Link mit linkId existiert.
- * Bot-Klicks werden als is_bot=true gespeichert und von getStats ignoriert.
- * Ein fehlender Referrer wird als "Direct" gespeichert.
- * Die IP-Adresse wird als SHA-256-Hash gespeichert, nie im Klartext.
- * @param {ClickInput} input
- * @returns {Promise<{ success: true, data: undefined } | { success: false, error: string }>}
+ * Bereitet Klick-Daten auf und schreibt sie in die DB.
+ * @param {{ linkId: string, referrer: string|null, userAgent: string, ip: string }} input
+ * @returns {Promise<void>}
  */
-export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
-  if (!(await linkExists(linkId))) return err("NOT_FOUND");
-  if (!ip) return err("MISSING_IP");
+const buildAndInsert = async ({ linkId, referrer, userAgent, ip }) => {
   const safeReferrer = referrer || DIRECT;
   const ipHash = hashIp(ip);
   await insertClick({
@@ -133,7 +127,27 @@ export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
     ipHash,
     isBot: isBot(userAgent),
   });
-  return ok();
+};
+
+/**
+ * Speichert einen Klick für den angegebenen Short-Link.
+ * Gibt NOT_FOUND zurück wenn kein Link mit linkId existiert.
+ * Bot-Klicks werden als is_bot=true gespeichert und von getStats ignoriert.
+ * Ein fehlender Referrer wird als "Direct" gespeichert.
+ * Die IP-Adresse wird als SHA-256-Hash gespeichert, nie im Klartext.
+ * @param {ClickInput} input
+ * @returns {Promise<{ success: true, data: undefined } | { success: false, error: { code: string, message?: string } }>}
+ */
+export const trackClick = async ({ linkId, referrer, userAgent, ip }) => {
+  try {
+    if (!(await linkExists(linkId))) return err("NOT_FOUND");
+    if (!ip) return err("MISSING_IP");
+    await buildAndInsert({ linkId, referrer, userAgent, ip });
+    return ok();
+  } catch (error) {
+    console.error("analytics-service error:", error);
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
 };
 
 /**
@@ -208,10 +222,15 @@ const queryStats = async (code) => {
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * Bot-Klicks (is_bot=TRUE) fließen in keine Metrik ein.
  * @param {string} code - Code des Short-Links
- * @returns {Promise<{ success: true, data: Stats } | { success: false, error: string }>}
+ * @returns {Promise<{ success: true, data: Stats } | { success: false, error: { code: string, message?: string } }>}
  */
 export const getStats = async (code) => {
-  if (!(await linkExists(code))) return err("NOT_FOUND");
-  const stats = await queryStats(code);
-  return ok(stats);
+  try {
+    if (!(await linkExists(code))) return err("NOT_FOUND");
+    const stats = await queryStats(code);
+    return ok(stats);
+  } catch (error) {
+    console.error("analytics-service error:", error);
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
 };

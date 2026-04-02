@@ -7,6 +7,7 @@
 import { randomBytes } from "node:crypto";
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";
+import { isValidUrl, validateAlias } from "../utils/validators.js";
 
 /**
  * @typedef {Object} Link
@@ -23,22 +24,9 @@ import { err, ok } from "../utils/result.js";
  */
 
 const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-// These slug names conflict with server routes — /api, /dashboard etc. would
-// be intercepted by the router before the redirect handler runs.
-const RESERVED = new Set([
-  "api",
-  "admin",
-  "dashboard",
-  "login",
-  "logout",
-  "static",
-]);
 const SLUG_LENGTH = 6;
 // 3 is enough: at 62^6 ≈ 56B slots, consecutive collisions signal a bug, not bad luck.
 const MAX_SLUG_ATTEMPTS = 3;
-const ALIAS_MAX_LENGTH = 50;
-const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
-const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
 const generateSlug = () => {
   const bytes = randomBytes(SLUG_LENGTH);
@@ -52,49 +40,6 @@ const toLink = (row) => ({
   isActive: row.is_active,
   userId: row.user_id ?? null,
 });
-
-/**
- * Prüft ob eine URL sicher ist: nur http/https, keine internen Hosts,
- * keine gefährlichen Protokolle (javascript:, data:, file: etc.).
- * @param {string} url
- * @returns {boolean}
- */
-const isValidUrl = (url) => {
-  try {
-    const parsed = new URL(url);
-    if (!ALLOWED_PROTOCOLS.has(parsed.protocol)) return false;
-    if (BLOCKED_HOSTS.has(parsed.hostname)) return false;
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/**
- * Prüft ob ein Custom-Alias verwendbar ist.
- * Gibt INVALID_INPUT zurück bei ungültiger Länge oder reserviertem Namen.
- * Gibt SLUG_TAKEN zurück wenn der Alias bereits in der DB existiert.
- * @param {string} alias
- * @returns {Promise<{ success: true, data: string } | { success: false, error: Object }>}
- */
-const validateAlias = async (alias) => {
-  if (
-    typeof alias !== "string" ||
-    alias.length < 1 ||
-    alias.length > ALIAS_MAX_LENGTH
-  )
-    return err({
-      code: "INVALID_INPUT",
-      message: `Alias muss 1–${ALIAS_MAX_LENGTH} Zeichen lang sein.`,
-    });
-  if (RESERVED.has(alias)) return err("SLUG_TAKEN");
-  const existing = await pool.query(
-    "SELECT code FROM short_links WHERE code = $1",
-    [alias],
-  );
-  if (existing.rows.length > 0) return err("SLUG_TAKEN");
-  return ok(alias);
-};
 
 /**
  * Generiert zufällige Slugs und prüft ihre Verfügbarkeit in der DB.
@@ -142,7 +87,7 @@ const insertLink = async (code, url, userId) => {
 export const createLink = async ({ url, alias } = {}, userId = null) => {
   if (!isValidUrl(url)) return err("INVALID_URL");
   if (alias) {
-    const aliasResult = await validateAlias(alias);
+    const aliasResult = await validateAlias(alias, pool);
     if (!aliasResult.success) return aliasResult;
     return insertLink(alias, url, userId);
   }
@@ -212,44 +157,6 @@ export const updateLink = async (code, url) => {
   );
   if (result.rows.length === 0) return err("NOT_FOUND");
   return ok(toLink(result.rows[0]));
-};
-
-/**
- * Gibt alle Short-Links zurück, die in den letzten `days` Tagen keinen Klick hatten.
- * Berücksichtigt auch Links ohne Klick-Einträge (LEFT JOIN).
- * Optional kann nach Besitzer gefiltert werden, damit Tests und spätere
- * User-Dashboards nicht von fremden Daten beeinflusst werden.
- * Gibt INVALID_DAYS zurück wenn `days` keine positive ganze Zahl ist.
- * @param {number} days - Zeitraum in Tagen (muss > 0 sein)
- * @param {string | null} userId - Optionaler Besitzer-Filter
- * @returns {Promise<{ success: true, data: Link[] } | { success: false, error: { code: string, message: string } }>}
- */
-export const getInactiveLinks = async (days, userId = null) => {
-  if (!Number.isInteger(days) || days <= 0) return err("INVALID_DAYS");
-  const start = performance.now();
-  // Time filter in ON, not WHERE — keeps links with zero matching clicks in the result set.
-  // Moving this to WHERE would turn the LEFT JOIN into an INNER JOIN.
-  const query = userId
-    ? `SELECT sl.* FROM short_links sl
-       LEFT JOIN link_clicks lc
-         ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
-       WHERE sl.user_id = $2
-       GROUP BY sl.code
-       HAVING MAX(lc.clicked_at) IS NULL
-       ORDER BY sl.created_at DESC`
-    : `SELECT sl.* FROM short_links sl
-       LEFT JOIN link_clicks lc
-         ON lc.code = sl.code AND lc.clicked_at >= NOW() - ($1 * INTERVAL '1 day')
-       GROUP BY sl.code
-       HAVING MAX(lc.clicked_at) IS NULL
-       ORDER BY sl.created_at DESC`;
-  const params = userId ? [days, userId] : [days];
-  const { rows } = await pool.query(query, params);
-  const ms = (performance.now() - start).toFixed(2);
-  console.log(
-    `[getInactiveLinks] days=${days} found=${rows.length} duration=${ms}ms`,
-  );
-  return ok(rows.map(toLink));
 };
 
 /**

@@ -6,6 +6,7 @@
  */
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";
+import { validateDays, validateLimit } from "../utils/validators.js";
 
 /**
  * @typedef {Object} OverviewStats
@@ -32,11 +33,6 @@ import { err, ok } from "../utils/result.js";
  * @property {string} source - Referrer-URL oder "direct"
  * @property {number} clicks - Klicks von dieser Quelle
  */
-
-const MIN_LIMIT = 1;
-const MAX_LIMIT = 100;
-const MIN_DAYS = 1;
-const MAX_DAYS = 365;
 
 const queryOverview = () =>
   pool.query(`
@@ -95,34 +91,6 @@ const codeExists = async (code) => {
     [code],
   );
   return rows.length > 0;
-};
-
-/**
- * Validiert limit: muss ganzzahlig und im Bereich MIN_LIMIT–MAX_LIMIT liegen.
- * @param {number} limit
- * @returns {{ success: true, data: number } | { success: false, error: object }}
- */
-const validateLimit = (limit) => {
-  if (!Number.isInteger(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT)
-    return err({
-      code: "INVALID_INPUT",
-      message: `limit must be ${MIN_LIMIT}–${MAX_LIMIT}. Received: ${limit}`,
-    });
-  return ok(limit);
-};
-
-/**
- * Validiert days: muss ganzzahlig und im Bereich MIN_DAYS–MAX_DAYS liegen.
- * @param {number} days
- * @returns {{ success: true, data: number } | { success: false, error: object }}
- */
-const validateDays = (days) => {
-  if (!Number.isInteger(days) || days < MIN_DAYS || days > MAX_DAYS)
-    return err({
-      code: "INVALID_INPUT",
-      message: `days must be ${MIN_DAYS}–${MAX_DAYS}. Received: ${days}`,
-    });
-  return ok(days);
 };
 
 /**

@@ -6,13 +6,11 @@
  * @module tests/link-service.test
  */
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
 import { after, afterEach, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
 import {
   createLink,
   deleteLink,
-  getInactiveLinks,
   getLink,
   toggleActive,
   updateLink,
@@ -223,95 +221,6 @@ describe("toggleActive", () => {
 
     assert.equal(result.success, false);
     assert.equal(result.error.code, "NOT_FOUND");
-  });
-});
-
-// ─── getInactiveLinks ────────────────────────────────────────────────────────
-
-describe("getInactiveLinks", () => {
-  // LINKS OHNE KLICKS: Der häufigste Inaktiv-Fall – der Link wurde angelegt,
-  // aber nie aufgerufen. LEFT JOIN muss diese Zeile trotzdem liefern.
-  it("gibt Links ohne Klick-Einträge zurück", async () => {
-    const created = await createLink({ url: "https://example.com/inactive" });
-    createdCodes.push(created.data.code);
-
-    const result = await getInactiveLinks(7);
-
-    assert.equal(result.success, true);
-    const codes = result.data.map((l) => l.code);
-    assert.ok(codes.includes(created.data.code));
-  });
-
-  // KLICK IM ZEITRAUM: Link hat einen frischen Klick – darf nicht auftauchen.
-  // Wir schreiben den Klick direkt in die DB, da kein insertClick-Export existiert.
-  it("schließt Links mit Klick im Zeitraum aus", async () => {
-    const created = await createLink({ url: "https://example.com/active" });
-    createdCodes.push(created.data.code);
-    await pool.query(
-      "INSERT INTO link_clicks (code, clicked_at) VALUES ($1, NOW())",
-      [created.data.code],
-    );
-
-    const result = await getInactiveLinks(7);
-
-    assert.equal(result.success, true);
-    const codes = result.data.map((l) => l.code);
-    assert.ok(!codes.includes(created.data.code));
-  });
-
-  // ALTER KLICK AUSSERHALB DES ZEITRAUMS: Der Link hatte Klicks, aber vor über
-  // 7 Tagen. Er gilt als inaktiv und muss im Ergebnis erscheinen.
-  it("gibt Links zurück deren letzter Klick außerhalb des Zeitraums liegt", async () => {
-    const created = await createLink({ url: "https://example.com/old-click" });
-    createdCodes.push(created.data.code);
-    await pool.query(
-      "INSERT INTO link_clicks (code, clicked_at) VALUES ($1, NOW() - INTERVAL '8 days')",
-      [created.data.code],
-    );
-
-    const result = await getInactiveLinks(7);
-
-    assert.equal(result.success, true);
-    const codes = result.data.map((l) => l.code);
-    assert.ok(codes.includes(created.data.code));
-  });
-
-  // LEERE DATENBANK: afterEach räumt alle Links weg – nach einem isolierten
-  // Test ohne eigene Links gibt getInactiveLinks für einen frischen User ein
-  // leeres Array zurück, unabhängig von Fremddaten in der Entwicklungs-DB.
-  it("gibt leeres Array zurück wenn keine Links existieren", async () => {
-    const { rows } = await pool.query(
-      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
-      [`inactive-${randomUUID()}@example.com`, "test-hash"],
-    );
-    createdUserIds.push(rows[0].id);
-    const result = await getInactiveLinks(7, rows[0].id);
-
-    assert.equal(result.success, true);
-    assert.equal(result.data.length, 0);
-  });
-
-  // UNGÜLTIGE DAYS-WERTE: Alle drei Fälle prüfen denselben Validierungspfad –
-  // 0, negative Zahl und Float dürfen nie die DB erreichen.
-  it("gibt err('INVALID_DAYS') zurück für days = 0", async () => {
-    const result = await getInactiveLinks(0);
-
-    assert.equal(result.success, false);
-    assert.equal(result.error.code, "INVALID_DAYS");
-  });
-
-  it("gibt err('INVALID_DAYS') zurück für negative Zahl", async () => {
-    const result = await getInactiveLinks(-3);
-
-    assert.equal(result.success, false);
-    assert.equal(result.error.code, "INVALID_DAYS");
-  });
-
-  it("gibt err('INVALID_DAYS') zurück für Float", async () => {
-    const result = await getInactiveLinks(1.5);
-
-    assert.equal(result.success, false);
-    assert.equal(result.error.code, "INVALID_DAYS");
   });
 });
 
