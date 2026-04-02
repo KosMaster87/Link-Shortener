@@ -261,3 +261,32 @@ Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
 - Offensichtlicher Code (getters, simple loops)
 - Implementation Details die sich ändern können
 - Private Hilfsfunktionen
+
+## Agentic Workflows
+
+### Wann Agents nutzen
+
+- Multi-File Refactoring (mehr als 3 Dateien betroffen)
+- Codebase-Exploration vor größeren Änderungen
+- Parallele, unabhängige Änderungen über mehrere Services
+- Pattern-Einführung über die gesamte Codebase
+
+### Wann KEINE Agents
+
+- Einzelne, einfache Änderungen (< 3 Dateien)
+- Wenn jeder Schritt manuell reviewed werden soll
+- Bei kritischen Änderungen (Security, Payment, Auth)
+
+### Refactoring-Workflow
+
+1. Explore-Agent: Aktuelle Situation verstehen, Abhängigkeiten finden
+2. Plan erstellen und reviewen — erst bestätigen, dann ausführen
+3. Branch anlegen (`git checkout -b refactor/...`) vor jeder Execution
+4. Phasenweise implementieren — nach jeder Phase: `git diff`, Tests, Review
+5. Merge erst wenn alle Tests grün
+
+### Multi-File Änderungen
+
+- Immer konkretes Vorher/Nachher-Beispiel mitgeben für Konsistenz
+- Erst Dry-Run (`Zeig mir erst welche Dateien betroffen wären`), dann Execute
+- Bei Unsicherheit: erst eine Datei, dann Rest nach Bestätigung
