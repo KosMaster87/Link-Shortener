@@ -17,9 +17,9 @@ export const ok = (data) => ({ success: true, data });
 /**
  * Erzeugt ein fehlgeschlagenes Result-Objekt.
  * Normalisiert den Input defensiv zu einem Objekt mit `code`-Feld:
- *   - String      → { code: input }
- *   - { code, … } → unverändert durchreichen
- *   - { …kein code } → { code: "UNEXPECTED", …input }
+ *   - String      → `{ code: input }`
+ *   - `{ code, … }` → unverändert durchreichen
+ *   - `{ …kein code }` → `{ code: "UNEXPECTED", …input }`
  * @param {string | { code: string, message?: string, [key: string]: * }} input
  * @returns {{ success: false, error: { code: string, message?: string } }}
  */

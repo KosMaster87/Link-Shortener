@@ -72,7 +72,7 @@ testem.log
 /typings
 
 # Documentation
-docs/
+# docs/ folder is tracked - docs/.gitignore handles node_modules/build exclusions
 
 # Markdown files (documentation)
 # Exclude all markdown files by default

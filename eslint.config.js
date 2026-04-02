@@ -1,6 +1,9 @@
 // eslint.config.js (ESLint Flat Config)
 export default [
   {
+    ignores: ["docs/**"],
+  },
+  {
     files: ["**/*.js"],
     languageOptions: {
       ecmaVersion: 2024,

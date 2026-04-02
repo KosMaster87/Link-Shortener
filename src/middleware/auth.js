@@ -1,7 +1,7 @@
 /**
  * @fileoverview Auth-Middleware: JWT-Verifikation
  * @description Liest Bearer-Token aus Authorization-Header, verifiziert ihn
- *   und schreibt req.user = { id, email }. Gibt 401 bei fehlendem/ungültigem Token.
+ *   und schreibt `req.user = { id, email }`. Gibt 401 bei fehlendem/ungültigem Token.
  * @module src/middleware/auth
  */
 import { verifyToken } from "../utils/jwt.js";
