@@ -206,6 +206,46 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Rate-Limit liefert `429`
 - Redirect- und Service-Tests grün (`npm run test`)
 
+## CI/CD Pipeline
+
+### GitHub Actions (`.github/workflows/ci.yml`)
+
+Läuft bei:
+
+- Push auf main
+- Pull Requests auf main
+
+Jobs:
+
+- `lint` - ESLint Prüfung
+- `test` - Test Suite
+
+### Definition of Done
+
+- Code formatiert (Claude Hooks)
+- Linter zufrieden (Claude Hooks + Git Hooks)
+- Tests laufen lokal (Git Hooks)
+- Lint-Check grün (Stop Hook)
+- Pipeline ist grün
+- PR wurde reviewed
+
+### Workflow für neue Features
+
+1. Branch erstellen: `git checkout -b feature/name`
+2. Entwickeln mit Claude Hooks (Auto-Format)
+3. Commit mit Git Hooks (Pre-commit Checks)
+4. Push und PR erstellen
+5. Pipeline abwarten
+6. Review einholen
+7. Merge nach Approval
+
+### Bei fehlgeschlagener Pipeline
+
+- Check welcher Job fehlgeschlagen ist
+- Logs in GitHub Actions ansehen
+- Lokal reproduzieren und fixen
+- Erneut pushen
+
 ## Automatische Qualitätschecks
 
 ### Was Claude automatisch ausführt (PostToolUse Hooks)

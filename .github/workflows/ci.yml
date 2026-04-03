@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: linkshort
+          POSTGRES_USER: dev2k
+          POSTGRES_PASSWORD: dev2k
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U dev2k -d linkshort"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 55432
+      PGDATABASE: linkshort
+      PGUSER: dev2k
+      PGPASSWORD: dev2k
+      JWT_SECRET: ci-test-secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Prepare database schema
+        run: |
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/schema.sql
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/002_add_users.sql
+
+      - name: Run tests with app server
+        run: |
+          set -euo pipefail
+
+          cleanup() {
+            if [ -n "${SERVER_PID:-}" ]; then
+              kill "$SERVER_PID" || true
+            fi
+          }
+          trap cleanup EXIT
+
+          npm start > /tmp/server.log 2>&1 &
+          SERVER_PID=$!
+
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ > /dev/null; then
+              echo "Server is up"
+              break
+            fi
+            sleep 1
+          done
+
+          if ! curl -fsS http://127.0.0.1:3000/ > /dev/null; then
+            echo "Server failed to start in time"
+            cat /tmp/server.log
+            exit 1
+          fi
+
+          if ! npm test; then
+            cat /tmp/server.log
+            exit 1
+          fi
