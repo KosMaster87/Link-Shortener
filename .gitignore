@@ -13,6 +13,9 @@ config/firebase.config.js
 .env.local
 .env.*.local
 
+# Local act secrets (never commit)
+.secrets
+
 # IDE/Editor
 .vscode/
 .idea/
