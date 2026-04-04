@@ -81,6 +81,14 @@
 - **Request-Daten:** Referrer, User-Agent, IP in der Route extrahieren, als Parameter übergeben
 - **Tests:** Echte PostgreSQL-DB (keine Mocks), `describe`/`it`, `createdCodes`-Cleanup in `afterEach`. Muster: `tests/link-service.test.js`
 
+## Analytics Exploration Findings (Tag 18)
+
+- Click-Tracking liegt in `link_clicks`: `id`, `code`, `clicked_at`, `referrer`, `user_agent`, `ip_hash`, `is_bot`
+- Bestehende Aggregation pro Link liegt in `src/services/analytics-service.js` (`getStats`, `queryTotalClicks`, `queryClicksByDay`, `queryReferrers`, `queryUniqueVisitors`)
+- Device-Stats fehlen trotz gespeichertem `user_agent` (Desktop/Mobile/Tablet aktuell nicht aggregiert)
+- Für neue Analytics-Features bestehende Queries erweitern statt parallel neue Logik aufzubauen
+- Dashboard-Routes auf Auth-Guard prüfen (Sicherheitsrisiko, falls ungeschützt)
+
 ## Dashboard-Queries - Bekannte Risiken
 
 | Risiko                                                                                               | Kategorie              | Lösung                                                                                                                      |

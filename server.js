@@ -8,7 +8,11 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname } from "node:path";
-import { handleAnalytics } from "./src/routes/analytics.js";
+import {
+  handleAnalytics,
+  handleAnalyticsByPeriod,
+  handleReferrers,
+} from "./src/routes/analytics.js";
 import { handleAuth } from "./src/routes/auth.js";
 import { handleDashboard } from "./src/routes/dashboard.js";
 import { handleLinks } from "./src/routes/links.js";
@@ -232,16 +236,27 @@ const routeApi = async (req, res, method, path) => {
     return await handleLinks(req, res, { code: toggleMatch[1] });
   }
 
+  const periodMatch = path.match(/^\/api\/links\/([^/]+)\/clicks\/period$/);
+  if (method === "GET" && periodMatch)
+    return await handleAnalyticsByPeriod(req, res, { code: periodMatch[1] });
+
   const clicksMatch = path.match(/^\/api\/links\/([^/]+)\/clicks$/);
   if (method === "GET" && clicksMatch)
     return await handleAnalytics(req, res, { code: clicksMatch[1] });
+
+  const referrersMatch = path.match(/^\/api\/links\/([^/]+)\/referrers$/);
+  if (method === "GET" && referrersMatch)
+    return await handleReferrers(req, res, { code: referrersMatch[1] });
 
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
   if (method === "GET" && statsMatch)
     return await handleStats(res, statsMatch[1]);
 
-  if (path.startsWith("/api/dashboard/"))
+  if (path.startsWith("/api/dashboard/")) {
+    const authed = await checkAuth(req, res);
+    if (!authed) return;
     return await routeDashboard(req, res, method, path);
+  }
 
   send404(res);
 };

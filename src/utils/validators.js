@@ -25,6 +25,7 @@ const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
 const MIN_DAYS = 1;
 const MAX_DAYS = 365;
+const VALID_PERIODS = new Set(["day", "week", "month"]);
 
 /**
  * Prüft ob eine URL sicher ist: nur http/https, keine internen Hosts,
@@ -106,4 +107,18 @@ export const validateDays = (days) => {
       message: `days must be ${MIN_DAYS}–${MAX_DAYS}. Received: ${days}`,
     });
   return ok(days);
+};
+
+/**
+ * Validiert period: muss "day", "week" oder "month" sein.
+ * @param {string} period
+ * @returns {{ success: true, data: string } | { success: false, error: { code: string, message: string } }}
+ */
+export const validatePeriod = (period) => {
+  if (!VALID_PERIODS.has(period))
+    return err({
+      code: "INVALID_INPUT",
+      message: `period muss day, week oder month sein. Received: ${period}`,
+    });
+  return ok(period);
 };

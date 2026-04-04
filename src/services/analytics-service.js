@@ -7,6 +7,7 @@
 import { createHash } from "node:crypto";
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";
+import { validatePeriod } from "../utils/validators.js";
 
 /**
  * @typedef {Object} ClickInput
@@ -215,6 +216,68 @@ const queryStats = async (code) => {
     topReferrers: referrers.rows,
     uniqueVisitors: unique.rows[0].count,
   };
+};
+
+/**
+ * @typedef {Object} PeriodCount
+ * @property {string} period_start - Periodenbeginn im Format YYYY-MM-DD
+ * @property {number} count        - Anzahl Klicks in dieser Periode
+ */
+
+/**
+ * Gibt Klickzahlen gruppiert nach Periode (day/week/month) zurück, absteigend sortiert.
+ * DATE_TRUNC schneidet auf den Periodenanfang — Montag für week, 1. des Monats für month.
+ * @param {string} code
+ * @param {string} period - "day" | "week" | "month"
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryClicksByPeriod = (code, period) =>
+  pool.query(
+    `SELECT TO_CHAR(DATE_TRUNC($2, clicked_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD') AS period_start,
+            COUNT(*)::int AS count
+     FROM link_clicks
+     WHERE code = $1 AND is_bot = FALSE
+     GROUP BY period_start ORDER BY period_start DESC`,
+    [code, period],
+  );
+
+/**
+ * Gibt Klickzahlen pro Periode für einen Short-Link zurück.
+ * Gibt INVALID_INPUT zurück bei ungültiger Periode.
+ * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * @param {string} code   - Code des Short-Links
+ * @param {string} period - "day" | "week" | "month"
+ * @returns {Promise<{ success: true, data: PeriodCount[] } | { success: false, error: { code: string, message: string } }>}
+ */
+export const getClicksByPeriod = async (code, period) => {
+  try {
+    const validated = validatePeriod(period);
+    if (!validated.success) return validated;
+    if (!(await linkExists(code))) return err("NOT_FOUND");
+    const { rows } = await queryClicksByPeriod(code, period);
+    return ok(rows);
+  } catch (error) {
+    console.error("analytics-service error:", error);
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
+};
+
+/**
+ * Gibt Referrer-Aggregation für einen Short-Link zurück, absteigend nach Anzahl.
+ * Null-Referrer erscheinen als "Direct" (gespeichert durch trackClick).
+ * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * @param {string} code - Code des Short-Links
+ * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: { code: string, message?: string } }>}
+ */
+export const getReferrers = async (code) => {
+  try {
+    if (!(await linkExists(code))) return err("NOT_FOUND");
+    const { rows } = await queryReferrers(code);
+    return ok(rows);
+  } catch (error) {
+    console.error("analytics-service error:", error);
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
 };
 
 /**

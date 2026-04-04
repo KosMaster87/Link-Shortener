@@ -30,7 +30,7 @@ import { validateDays, validateLimit } from "../utils/validators.js";
 
 /**
  * @typedef {Object} ReferrerCount
- * @property {string} source - Referrer-URL oder "direct"
+ * @property {string} source - Referrer-URL oder "Direct"
  * @property {number} clicks - Klicks von dieser Quelle
  */
 
@@ -70,7 +70,7 @@ const queryClicksPerDay = (days) =>
 
 const queryReferrers = (code) =>
   pool.query(
-    `SELECT COALESCE(referrer, 'direct') AS source, COUNT(*)::int AS clicks
+    `SELECT COALESCE(referrer, 'Direct') AS source, COUNT(*)::int AS clicks
      FROM link_clicks
      WHERE code = $1
        AND is_bot = FALSE
@@ -149,7 +149,7 @@ export const getClicksPerDay = async (days) => {
 };
 
 /**
- * Gibt Referrer-Verteilung für einen Link zurück. Null-Referrer erscheinen als "direct".
+ * Gibt Referrer-Verteilung für einen Link zurück. Null-Referrer erscheinen als "Direct".
  * Gibt NOT_FOUND zurück wenn der Code nicht existiert.
  * @param {string} code - Short-Link-Code
  * @returns {Promise<{ success: true, data: ReferrerCount[] } | { success: false, error: { code: string, message: string } }>}
