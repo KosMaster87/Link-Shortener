@@ -6,7 +6,6 @@
  */
 import { createHash } from "node:crypto";
 import { pool } from "../db/index.js";
-import { classifyDevice } from "../utils/device-classifier.js";
 import { err, ok } from "../utils/result.js";
 import { validatePeriod } from "../utils/validators.js";
 
@@ -288,35 +287,48 @@ export const getReferrers = async (code) => {
  * @property {number} desktop - Anzahl Klicks von Desktop-Geräten
  */
 
+// Patterns spiegeln TABLET_PATTERNS / MOBILE_PATTERNS aus device-classifier.js wider.
+// Bei Änderungen dort müssen diese Arrays synchron gehalten werden.
+const TABLET_LIKE = ["%ipad%", "%tablet%", "%kindle%", "%playbook%", "%silk%"];
+const MOBILE_LIKE = [
+  "%mobile%",
+  "%android%",
+  "%iphone%",
+  "%ipod%",
+  "%blackberry%",
+  "%windows phone%",
+  "%opera mini%",
+];
+
 /**
- * Gibt user_agent-Rohdaten für Klicks eines Links zurück (nur echte Besucher).
+ * Aggregiert Geräte-Verteilung direkt in SQL via CTE + CASE/WHEN.
+ * Gibt immer genau 1 Zeile zurück (0-Werte wenn keine Klicks vorhanden).
+ * Tablet-Priorität ist durch CASE-Reihenfolge garantiert (identisch zu classifyDevice).
  * @param {string} code
  * @returns {Promise<import("pg").QueryResult>}
  */
-const queryUserAgents = (code) =>
+const queryDeviceStats = (code) =>
   pool.query(
-    `SELECT user_agent FROM link_clicks
-     WHERE code = $1 AND is_bot = FALSE AND user_agent IS NOT NULL`,
-    [code],
-  );
-
-/**
- * Zählt Klicks nach Gerätetyp über classifyDevice().
- * @param {{ user_agent: string }[]} rows
- * @returns {DeviceStats}
- */
-const aggregateDevices = (rows) =>
-  rows.reduce(
-    (acc, { user_agent }) => {
-      acc[classifyDevice(user_agent)] += 1;
-      return acc;
-    },
-    { mobile: 0, tablet: 0, desktop: 0 },
+    `WITH classified AS (
+       SELECT CASE
+         WHEN lower(user_agent) LIKE ANY($2) THEN 'tablet'
+         WHEN lower(user_agent) LIKE ANY($3) THEN 'mobile'
+         ELSE 'desktop'
+       END AS device
+       FROM link_clicks
+       WHERE code = $1 AND is_bot = FALSE AND user_agent IS NOT NULL
+     )
+     SELECT
+       COUNT(*) FILTER (WHERE device = 'tablet')::int AS tablet,
+       COUNT(*) FILTER (WHERE device = 'mobile')::int AS mobile,
+       COUNT(*) FILTER (WHERE device = 'desktop')::int AS desktop
+     FROM classified`,
+    [code, TABLET_LIKE, MOBILE_LIKE],
   );
 
 /**
  * Gibt Geräte-Verteilung (mobile/tablet/desktop) für einen Short-Link zurück.
- * Klassifizierung erfolgt in JS aus gespeicherten user_agent-Strings.
+ * Aggregation erfolgt vollständig in SQL — kein In-Memory-Scan der Rohdaten.
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * @param {string} code - Code des Short-Links
  * @returns {Promise<{ success: true, data: DeviceStats } | { success: false, error: { code: string, message?: string } }>}
@@ -324,8 +336,8 @@ const aggregateDevices = (rows) =>
 export const getDeviceStats = async (code) => {
   try {
     if (!(await linkExists(code))) return err("NOT_FOUND");
-    const { rows } = await queryUserAgents(code);
-    return ok(aggregateDevices(rows));
+    const { rows } = await queryDeviceStats(code);
+    return ok(rows[0]);
   } catch (error) {
     console.error("analytics-service error:", error);
     return err({ code: "DB_ERROR", message: "Datenbankfehler." });
