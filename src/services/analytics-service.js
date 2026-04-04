@@ -6,6 +6,7 @@
  */
 import { createHash } from "node:crypto";
 import { pool } from "../db/index.js";
+import { classifyDevice } from "../utils/device-classifier.js";
 import { err, ok } from "../utils/result.js";
 import { validatePeriod } from "../utils/validators.js";
 
@@ -274,6 +275,57 @@ export const getReferrers = async (code) => {
     if (!(await linkExists(code))) return err("NOT_FOUND");
     const { rows } = await queryReferrers(code);
     return ok(rows);
+  } catch (error) {
+    console.error("analytics-service error:", error);
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
+};
+
+/**
+ * @typedef {Object} DeviceStats
+ * @property {number} mobile  - Anzahl Klicks von mobilen Geräten
+ * @property {number} tablet  - Anzahl Klicks von Tablets
+ * @property {number} desktop - Anzahl Klicks von Desktop-Geräten
+ */
+
+/**
+ * Gibt user_agent-Rohdaten für Klicks eines Links zurück (nur echte Besucher).
+ * @param {string} code
+ * @returns {Promise<import("pg").QueryResult>}
+ */
+const queryUserAgents = (code) =>
+  pool.query(
+    `SELECT user_agent FROM link_clicks
+     WHERE code = $1 AND is_bot = FALSE AND user_agent IS NOT NULL`,
+    [code],
+  );
+
+/**
+ * Zählt Klicks nach Gerätetyp über classifyDevice().
+ * @param {{ user_agent: string }[]} rows
+ * @returns {DeviceStats}
+ */
+const aggregateDevices = (rows) =>
+  rows.reduce(
+    (acc, { user_agent }) => {
+      acc[classifyDevice(user_agent)] += 1;
+      return acc;
+    },
+    { mobile: 0, tablet: 0, desktop: 0 },
+  );
+
+/**
+ * Gibt Geräte-Verteilung (mobile/tablet/desktop) für einen Short-Link zurück.
+ * Klassifizierung erfolgt in JS aus gespeicherten user_agent-Strings.
+ * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * @param {string} code - Code des Short-Links
+ * @returns {Promise<{ success: true, data: DeviceStats } | { success: false, error: { code: string, message?: string } }>}
+ */
+export const getDeviceStats = async (code) => {
+  try {
+    if (!(await linkExists(code))) return err("NOT_FOUND");
+    const { rows } = await queryUserAgents(code);
+    return ok(aggregateDevices(rows));
   } catch (error) {
     console.error("analytics-service error:", error);
     return err({ code: "DB_ERROR", message: "Datenbankfehler." });

@@ -6,6 +6,7 @@
  */
 import {
   getClicksByPeriod,
+  getDeviceStats,
   getReferrers,
   getStats,
 } from "../services/analytics-service.js";
@@ -56,6 +57,24 @@ export const handleAnalyticsByPeriod = async (req, res, params) => {
  */
 export const handleReferrers = async (req, res, params) => {
   const result = await getReferrers(params.code);
+  if (!result.success)
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+      message: result.error.message,
+    });
+  return send(res, 200, result.data);
+};
+
+/**
+ * Gibt Geräte-Verteilung (mobile/tablet/desktop) für einen Short-Link zurück.
+ * Schlägt mit 404 fehl wenn kein Link mit diesem Code existiert.
+ * @param {import("node:http").IncomingMessage} req
+ * @param {import("node:http").ServerResponse} res
+ * @param {{ code: string }} params
+ * @returns {Promise<void>}
+ */
+export const handleDevices = async (req, res, params) => {
+  const result = await getDeviceStats(params.code);
   if (!result.success)
     return send(res, ERROR_STATUS[result.error.code] ?? 500, {
       error: result.error.code,

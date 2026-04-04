@@ -11,6 +11,7 @@ import { extname } from "node:path";
 import {
   handleAnalytics,
   handleAnalyticsByPeriod,
+  handleDevices,
   handleReferrers,
 } from "./src/routes/analytics.js";
 import { handleAuth } from "./src/routes/auth.js";
@@ -247,6 +248,10 @@ const routeApi = async (req, res, method, path) => {
   const referrersMatch = path.match(/^\/api\/links\/([^/]+)\/referrers$/);
   if (method === "GET" && referrersMatch)
     return await handleReferrers(req, res, { code: referrersMatch[1] });
+
+  const devicesMatch = path.match(/^\/api\/links\/([^/]+)\/devices$/);
+  if (method === "GET" && devicesMatch)
+    return await handleDevices(req, res, { code: devicesMatch[1] });
 
   const statsMatch = path.match(/^\/api\/links\/([^/]+)\/stats$/);
   if (method === "GET" && statsMatch)
