@@ -6,7 +6,8 @@ A minimal URL shortener built with Node.js and PostgreSQL. Create short links, t
 
 - Create short links with optional custom slug
 - Click tracking with referrer, user-agent, and bot detection
-- Dashboard: overview stats, clicks per day, top links, referrer breakdown
+- Analytics API per link: period timeline, referrers, and device distribution
+- Dashboard: overview stats, clicks per day, top links, referrer breakdown (auth required)
 - JWT authentication (register/login)
 - Rate limiting per IP, security headers, input validation
 
@@ -81,12 +82,23 @@ All write operations require `Authorization: Bearer <token>`.
 
 ### Dashboard
 
+All dashboard endpoints require `Authorization: Bearer <token>`.
+
 | Method | Path                          | Query Params  |
 | ------ | ----------------------------- | ------------- |
 | GET    | /api/dashboard/overview       | —             |
 | GET    | /api/dashboard/top-links      | limit (1–100) |
 | GET    | /api/dashboard/clicks-per-day | days (1–365)  |
 | GET    | /api/dashboard/referrer/:code | —             |
+
+### Analytics
+
+| Method | Path                           | Query Params              |
+| ------ | ------------------------------ | ------------------------- |
+| GET    | /api/links/:code/clicks        | —                         |
+| GET    | /api/links/:code/clicks/period | period (day\|week\|month) |
+| GET    | /api/links/:code/referrers     | —                         |
+| GET    | /api/links/:code/devices       | —                         |
 
 ## Project Structure
 
@@ -113,9 +125,11 @@ link-shortener/
 │   │   ├── analytics-service.js
 │   │   └── dashboard-service.js
 │   └── utils/
+│       ├── device-classifier.js
 │       ├── jwt.js
 │       ├── rate-limit.js
-│       └── result.js
+│       ├── result.js
+│       └── validators.js
 ├── public/
 │   ├── index.html
 │   ├── login.html
@@ -123,8 +137,12 @@ link-shortener/
 │   ├── app.js
 │   └── style.css
 ├── tests/
+│   ├── analytics-devices.test.js
+│   ├── analytics-period.test.js
+│   ├── analytics-referrers.test.js
 │   ├── link-service.test.js
 │   ├── analytics-service.test.js
+│   ├── dashboard-auth.test.js
 │   └── e2e-redirect.test.js
 ├── .env.example
 ├── package.json
@@ -151,6 +169,9 @@ link-shortener/
 | Day 13 | Security review and authentication      | Done   |
 | Day 14 | Documentation                           | Done   |
 | Day 15 | Hooks and automatic quality             | Done   |
+| Day 16 | Agents and delegated workflows          | Done   |
+| Day 17 | CI/CD pipeline and quality gate         | Done   |
+| Day 18 | Advanced analytics API workflow         | Done   |
 
 ## Developer
 
