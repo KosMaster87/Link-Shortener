@@ -338,3 +338,31 @@ Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
 - Immer konkretes Vorher/Nachher-Beispiel mitgeben für Konsistenz
 - Erst Dry-Run (`Zeig mir erst welche Dateien betroffen wären`), dann Execute
 - Bei Unsicherheit: erst eine Datei, dann Rest nach Bestätigung
+
+## Claude API – Konfiguration
+
+### Einsatzbereich
+
+- URL-Beschreibungen beim Kürzen: claude-haiku-4-5
+- Code-Reviews (automatisiert): claude-sonnet-4-6-20250514
+- Komplexe Analysen: claude-sonnet-4-6-20250514
+
+### SDK
+
+@anthropic-ai/sdk – installiert als Dependency
+
+### Umgebungsvariablen
+
+ANTHROPIC_API_KEY in .env (niemals committen)
+Vorlage: .env.example im Repo
+
+### Kostenstrategie
+
+- Haiku für einfache, häufige Tasks (3× günstiger als Sonnet)
+- max_tokens begrenzen (z. B. 100 für Kurzbeschreibungen)
+- usage-Feld nach jedem Call loggen
+
+### Script
+
+bin/describe-url.js – URL-Beschreibungs-Generator
+Usage: node --env-file-if-exists=.env bin/describe-url.js &lt;url&gt;
