@@ -322,16 +322,32 @@
 
       // ── API ──────────────────────────────────────────────────────────────────
 
+      const authFetch = async (url) => {
+        const token = getToken();
+        if (!token) {
+          redirectToLogin();
+          throw new Error("UNAUTHORIZED");
+        }
+
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.status === 401) {
+          redirectToLogin();
+          throw new Error("UNAUTHORIZED");
+        }
+
+        if (!res.ok) throw new Error("REQUEST_FAILED");
+        return res.json();
+      };
+
       const api = {
-        overview: () => fetch("/api/dashboard/overview").then((r) => r.json()),
+        overview: () => authFetch("/api/dashboard/overview"),
         topLinks: (limit) =>
-          fetch(`/api/dashboard/top-links?limit=${limit}`).then((r) =>
-            r.json(),
-          ),
+          authFetch(`/api/dashboard/top-links?limit=${limit}`),
         clicksPerDay: (days) =>
-          fetch(`/api/dashboard/clicks-per-day?days=${days}`).then((r) =>
-            r.json(),
-          ),
+          authFetch(`/api/dashboard/clicks-per-day?days=${days}`),
       };
 
       // ── Helpers ──────────────────────────────────────────────────────────────
@@ -437,6 +453,7 @@
 
       // ── Init ─────────────────────────────────────────────────────────────────
 
+      if (!getToken()) redirectToLogin();
       updateNav();
       loadOverview();
       loadTopLinks();

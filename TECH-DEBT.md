@@ -12,7 +12,6 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 **Befund:**
 
-- `getTopLinks` ist eine Vollaggregation (`GROUP BY` ueber alle Codes).
 - `getTopLinks` ist eine Vollaggregation (`GROUP BY` über alle Codes).
 - `EXPLAIN ANALYZE` zeigt korrekt Hash Join + Seq Scan.
 - Ein Index auf `link_clicks.code` hilft hier kaum, da alle Zeilen gelesen werden müssen.
@@ -57,25 +56,25 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 **Befund:**
 
-- Fuer Dashboard-Overview ist ein kurzer TTL-Cache sinnvoll.
+- Für Dashboard-Overview ist ein kurzer TTL-Cache sinnvoll.
 - Tag 12 Fokus lag auf Messen/Verstehen/Fixen; Caching wurde absichtlich vertagt.
 
 **Plan (Tag 12.5 / Tag 13+):**
 
-1. In-Memory Cache mit `Map` und TTL (60s) fuer `getOverviewStats`.
+1. In-Memory Cache mit `Map` und TTL (60s) für `getOverviewStats`.
 2. Helferfunktionen `getCached(key)` und `setCache(key, data)`.
 3. Cache-Hit/Miss im Debug-Log sichtbar machen.
 4. Guard gegen unendliches Wachstum (max keys oder nur feste Keys).
 
 **Akzeptanzkriterien:**
 
-- Bei Cache-Hit keine DB-Query fuer Overview.
-- Rueckgabe bleibt identisch zum aktuellen API-Format.
-- Keine Aenderung am Error-Handling.
+- Bei Cache-Hit keine DB-Query für Overview.
+- Rückgabe bleibt identisch zum aktuellen API-Format.
+- Keine Änderung am Error-Handling.
 
 ---
 
-## P3 - Referrer: Double-Query kann spaeter vereinfacht werden
+## P3 - Referrer: Double-Query kann später vereinfacht werden
 
 **Datei:** `src/services/dashboard-service.js`
 
@@ -86,32 +85,32 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 **Plan (optional):**
 
-1. Auf eine Query-Strategie pruefen (CTE / JOIN), die Existenz und Aggregation kombiniert.
-2. Verhalten fuer `NOT_FOUND` exakt beibehalten.
+1. Auf eine Query-Strategie prüfen (CTE / JOIN), die Existenz und Aggregation kombiniert.
+2. Verhalten für `NOT_FOUND` exakt beibehalten.
 
 ---
 
 ## P3 - Rate-Limit HTTP-Orchestrierung sauberer trennen
 
-**Datei:** `server.js`, spaeter `src/middleware/rate-limiter.js`
+**Datei:** `server.js`, später `src/middleware/rate-limiter.js`
 
 **Befund:**
 
 - Die Sliding-Window-Logik liegt bereits sauber in `src/utils/rate-limit.js`.
 - Die HTTP-seitige Verdrahtung der Buckets (`general`, `createLink`, `login`) und das Senden von `429` liegen noch in `server.js`.
-- Fuer das kleine native-`node:http` Setup ist das aktuell ok, aber die Verantwortlichkeiten sind nicht ganz sauber getrennt.
+- Für das kleine native-`node:http` Setup ist das aktuell ok, aber die Verantwortlichkeiten sind nicht ganz sauber getrennt.
 
 **Risiko:**
 
 - `server.js` wird mit jeder weiteren Security-Regel schwerer lesbar.
-- Rate-Limit-Policy und HTTP-Antwortlogik sind enger gekoppelt als noetig.
+- Rate-Limit-Policy und HTTP-Antwortlogik sind enger gekoppelt als nötig.
 
-**Plan (spaeter):**
+**Plan (später):**
 
-1. Kleinen HTTP-Helfer oder Middleware-Datei `src/middleware/rate-limiter.js` einfuehren.
-2. Funktion wie `applyRateLimit(req, res, bucket)` kapselt Bucket-Pruefung und `429`-Response.
+1. Kleinen HTTP-Helfer oder Middleware-Datei `src/middleware/rate-limiter.js` einführen.
+2. Funktion wie `applyRateLimit(req, res, bucket)` kapselt Bucket-Prüfung und `429`-Response.
 3. `server.js` reduziert sich auf Routing-Entscheidungen statt Limit-Details.
-4. Vorhandene Logik in `src/utils/rate-limit.js` unveraendert als technische Basis behalten.
+4. Vorhandene Logik in `src/utils/rate-limit.js` unverändert als technische Basis behalten.
 
 ---
 
@@ -121,16 +120,16 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 **Befund:**
 
-- Durch die Migration auf User/Ownership koennen bestehende `short_links` mit `user_id = NULL` existieren.
-- Der aktuelle Ownership-Check ist korrekt strikt: `NULL !== user.id` und blockiert damit Bearbeiten/Loeschen solcher Links.
-- Das ist sicher, aber fuer Alt-Daten operativ unpraktisch.
+- Durch die Migration auf User/Ownership können bestehende `short_links` mit `user_id = NULL` existieren.
+- Der aktuelle Ownership-Check ist korrekt strikt: `NULL !== user.id` und blockiert damit Bearbeiten/Löschen solcher Links.
+- Das ist sicher, aber für Alt-Daten operativ unpraktisch.
 
 **Risiko:**
 
 - Vorhandene Legacy-Links bleiben dauerhaft herrenlos.
-- Admin/Owner koennen diese Links ohne Nachmigration nicht mehr pflegen.
+- Admin/Owner können diese Links ohne Nachmigration nicht mehr pflegen.
 
-**Plan (spaeter):**
+**Plan (später):**
 
 1. Ein einmaliges Script bauen, das alle `short_links` mit `user_id = NULL` einem definierten Admin-User zuweist.
 2. Script soll den Admin per E-Mail suchen und bei fehlendem User sauber abbrechen.

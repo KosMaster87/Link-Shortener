@@ -123,7 +123,7 @@ describe("GET /api/dashboard/* – mit ungültigem Token", () => {
   // requireAuth prüft Signatur – ein gefälschtes Payload schlägt fehl.
   it("GET /api/dashboard/overview mit gefälschtem Token → 401", async () => {
     const res = await fetch(`${BASE}/api/dashboard/overview`, {
-      headers: { Authorization: "Bearer gefaelschter.token.wert" },
+      headers: { Authorization: "Bearer gefälschter.token.wert" },
     });
     assert.equal(res.status, 401);
   });
