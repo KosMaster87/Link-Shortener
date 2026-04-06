@@ -44,7 +44,7 @@ const queryOverview = () =>
 
 const queryTopLinks = (limit) =>
   pool.query(
-    `SELECT sl.code, sl.original_url,
+    `SELECT sl.code, sl.original_url, sl.description,
             COUNT(lc.id) FILTER (WHERE lc.is_bot = FALSE)::int AS clicks
      FROM short_links sl
      LEFT JOIN link_clicks lc ON sl.code = lc.code

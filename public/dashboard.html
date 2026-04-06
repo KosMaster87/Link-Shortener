@@ -380,6 +380,7 @@
                   <span class="url-cell" title="${escHtml(r.original_url)}">
                     ${escHtml(r.original_url)}
                   </span>
+                  ${r.description ? `<br><span style="font-size:0.75rem;color:#9ca3af;">${escHtml(r.description)}</span>` : ""}
                 </td>
                 <td class="clicks-cell">${r.clicks}</td>
               </tr>`,

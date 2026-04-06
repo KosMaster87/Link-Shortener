@@ -36,6 +36,7 @@ const generateSlug = () => {
 const toLink = (row) => ({
   code: row.code,
   originalUrl: row.original_url,
+  description: row.description ?? null,
   createdAt: row.created_at,
   isActive: row.is_active,
   userId: row.user_id ?? null,
