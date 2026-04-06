@@ -366,3 +366,18 @@ Vorlage: .env.example im Repo
 
 bin/describe-url.js – URL-Beschreibungs-Generator
 Usage: node --env-file-if-exists=.env bin/describe-url.js &lt;url&gt;
+
+scripts/batch-describe.js – Batch-Beschreibungen für short_links ohne description
+Usage: node --env-file-if-exists=.env scripts/batch-describe.js
+
+scripts/pr-review.js – PR-Diff per Claude Sonnet reviewen
+Input: pr_diff.txt
+Output: review_output.md (mit `<!-- pr-review-bot -->` Marker)
+
+### CI/CD (API-basiert)
+
+.github/workflows/pr-review.yml – automatisches PR-Review bei pull_request (opened, synchronize)
+
+- nur für interne PRs (Fork-PRs werden aus Sicherheitsgründen übersprungen)
+- nutzt GitHub Secret ANTHROPIC_API_KEY
+- aktualisiert vorhandenen Bot-Kommentar statt bei jedem Push einen neuen zu posten
