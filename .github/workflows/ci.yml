@@ -70,6 +70,7 @@ jobs:
         run: |
           PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/schema.sql
           PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/002_add_users.sql
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/003_add_description.sql
 
       - name: Run tests with app server
         run: |
