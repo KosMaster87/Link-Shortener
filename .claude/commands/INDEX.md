@@ -7,6 +7,7 @@ Schnellübersicht für Custom Commands im LinkShort-Projekt.
 - Kleine bis mittlere Feature-Umsetzung (TDD-first): `/feature <name>`
 - Grosses Feature mit Explore/Plan/Validate/Ship: `/feature-workflow <name>`
 - Bestehenden Code kritisch prüfen: `/review <pfad>`
+- Deployment-Readiness standardisiert prüfen: `/deploy-check`
 - Tests erstellen oder erweitern: `/test <modul|datei>`
 - CLAUDE.md um Hook-/Qualitätschecks erweitern: `/update-claude-md-hooks`
 
@@ -17,6 +18,7 @@ Schnellübersicht für Custom Commands im LinkShort-Projekt.
 | `/feature`                | `feature.md`                | Feature nach LinkShort-Pattern mit TDD-Phasen umsetzen                        | Wenn du schnell in die Implementierung willst |
 | `/feature-workflow`       | `feature-workflow.md`       | Voller Agentic Workflow (Preflight, Explore, Plan, Implement, Validate, Ship) | Bei komplexen Features über mehrere Dateien   |
 | `/review`                 | `review.md`                 | Strukturierte Code-Review-Analyse in 3 Ebenen                                 | Vor Merge oder bei Qualitätsproblemen         |
+| `/deploy-check`           | `deploy-check.md`           | Deployment-Readiness mit Tests/Lint/Env-Check                                 | Vor Release oder vor erstem Production-Deploy |
 | `/test`                   | `test.md`                   | Testfälle für Services erstellen/ausbauen                                     | Bei neuen Features oder Regressionen          |
 | `/update-claude-md-hooks` | `update-claude-md-hooks.md` | Doku-Update für automatische Qualitätschecks                                  | Wenn Hook-/Lint-Setup geändert wurde          |
 
@@ -24,7 +26,7 @@ Schnellübersicht für Custom Commands im LinkShort-Projekt.
 
 1. Grosser Scope: erst `/feature-workflow`, danach phasenweise umsetzen.
 2. Lokaler Scope: direkt `/feature`.
-3. Vor Ship: `/review` ausführen, dann `npm test` und `npm run lint`.
+3. Vor Ship: `/review` und `/deploy-check` ausführen, danach final `npm test` und `npm run lint`.
 
 ## Hinweise
 

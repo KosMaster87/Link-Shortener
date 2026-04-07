@@ -279,9 +279,24 @@ Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
 
 ### Konfiguration
 
-- Claude Hooks: `.claude/settings.local.json`
+- Team-Baseline (committed): `.claude/settings.json`
+- Persönliche Overrides (nicht committed): `.claude/settings.local.json`
 - Git Hooks: `.husky/pre-commit` + `lint-staged` in `package.json`
 - ESLint: `eslint.config.js`
+
+## Team Setup
+
+### Shared Commands
+
+Alle Custom Commands: @.claude/commands/INDEX.md
+
+### Drei Ebenen der Claude-Konfiguration
+
+- Projekt: `.claude/settings.json` (committed, gilt für alle)
+- Lokal: `.claude/settings.local.json` (nicht committed, persönliche Präferenzen)
+- User: `~/.claude/settings.json` (projektübergreifend, nicht im Repo)
+
+Regel: Team-Standards immer auf Projektebene, persönliche Präferenzen nur lokal.
 
 ## Documentation Standards
 

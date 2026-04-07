@@ -29,27 +29,6 @@ Aktueller Stand nach Tag 12 (Performance & Optimierung).
 
 ---
 
-## P1 - Test-Design: "leere DB"-Annahme ist fragil
-
-**Datei:** `tests/link-service.test.js` (Testfall mit Erwartung auf 0 Inactive-Links)
-
-**Befund:**
-
-- Mindestens ein Test setzt implizit eine leere oder sterile DB voraus.
-- In aktiver Dev-DB mit Seed-/Produktionsnahen Daten wird der Test rot, obwohl kein Feature-Bug vorliegt.
-
-**Risiko:**
-
-- Falsch-negative Testfehler blockieren Releases und verwischen echte Regressionen.
-
-**Plan (nächster Test-Refactor):**
-
-1. Testdaten strikt pro Test erzeugen und wieder entfernen.
-2. Assertions nur auf testeigene Datensätze.
-3. Keine globale "DB ist leer"-Annahme.
-
----
-
 ## P2 - Dashboard-Caching (bewusst verschoben)
 
 **Datei:** `src/services/dashboard-service.js`

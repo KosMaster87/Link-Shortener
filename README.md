@@ -5,11 +5,14 @@ A minimal URL shortener built with Node.js and PostgreSQL. Create short links, t
 ## Features
 
 - Create short links with optional custom slug
+- AI-generated short descriptions for stored URLs
 - Click tracking with referrer, user-agent, and bot detection
 - Analytics API per link: period timeline, referrers, and device distribution
 - Dashboard: overview stats, clicks per day, top links, referrer breakdown (auth required)
 - JWT authentication (register/login)
 - Rate limiting per IP, security headers, input validation
+- Batch automation for missing descriptions
+- Automated PR review via GitHub Actions + Claude API
 
 ## Installation
 
@@ -24,6 +27,7 @@ createdb linkshort
 # 3. Apply schema
 psql linkshort < src/db/schema.sql
 psql linkshort < src/db/migrations/002_add_users.sql
+psql linkshort < src/db/migrations/003_add_description.sql
 
 # 4. Configure environment
 cp .env.example .env
@@ -46,9 +50,14 @@ JWT_SECRET=replace-with-a-long-random-string
 PGDATABASE=linkshort        # PostgreSQL database name
 # PORT=3000                 # optional, default 3000
 # NODE_ENV=development      # production suppresses stack traces
+
+# Claude API for batch descriptions and PR review
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 PostgreSQL connects via Unix socket (`/var/run/postgresql`). Override host, port, and user via standard `PGHOST`, `PGPORT`, `PGUSER` env vars.
+
+`ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
 
 ## Testing
 
@@ -71,14 +80,16 @@ Requires a running PostgreSQL instance with the `linkshort` database.
 
 All write operations require `Authorization: Bearer <token>`.
 
-| Method | Path                    | Body / Params    | Response       |
-| ------ | ----------------------- | ---------------- | -------------- |
-| GET    | /api/links              | —                | Array of links |
-| POST   | /api/links              | `{ url, slug? }` | Created link   |
-| PUT    | /api/links/:code        | `{ url }`        | Updated link   |
-| PATCH  | /api/links/:code/toggle | —                | Toggled link   |
-| DELETE | /api/links/:code        | —                | 204 No Content |
-| GET    | /:code                  | —                | 302 Redirect   |
+| Method | Path                    | Body / Params    | Response                          |
+| ------ | ----------------------- | ---------------- | --------------------------------- |
+| GET    | /api/links              | —                | Array of links with `description` |
+| POST   | /api/links              | `{ url, slug? }` | Created link                      |
+| PUT    | /api/links/:code        | `{ url }`        | Updated link                      |
+| PATCH  | /api/links/:code/toggle | —                | Toggled link                      |
+| DELETE | /api/links/:code        | —                | 204 No Content                    |
+| GET    | /:code                  | —                | 302 Redirect                      |
+
+Each link object includes `code`, `originalUrl`, `description`, `createdAt`, `isActive`, and `userId`.
 
 ### Dashboard
 
@@ -105,12 +116,19 @@ All dashboard endpoints require `Authorization: Bearer <token>`.
 ```text
 link-shortener/
 ├── server.js
+├── scripts/
+│   ├── batch-describe.js
+│   └── pr-review.js
+├── .github/
+│   └── workflows/
+│       └── pr-review.yml
 ├── src/
 │   ├── db/
 │   │   ├── index.js
 │   │   ├── schema.sql
 │   │   └── migrations/
-│   │       └── 002_add_users.sql
+│   │       ├── 002_add_users.sql
+│   │       └── 003_add_description.sql
 │   ├── middleware/
 │   │   └── auth.js
 │   ├── routes/
@@ -149,6 +167,12 @@ link-shortener/
 └── README.md
 ```
 
+## Automation
+
+- `scripts/batch-describe.js` generates missing URL descriptions for rows where `description IS NULL`
+- `.github/workflows/pr-review.yml` runs an automated Claude-based PR review for internal pull requests
+- `scripts/pr-review.js` builds the review comment and updates the existing bot comment instead of posting duplicates
+
 ## Course Progress
 
 | Day    | Topic                                   | Status |
@@ -172,6 +196,9 @@ link-shortener/
 | Day 16 | Agents and delegated workflows          | Done   |
 | Day 17 | CI/CD pipeline and quality gate         | Done   |
 | Day 18 | Advanced analytics API workflow         | Done   |
+| Day 19 | API foundations and cost awareness      | Done   |
+| Day 20 | Automation with batch descriptions      | Done   |
+| Day 21 | Team-ready workflows and shared setup   | Done   |
 
 ## Developer
 
