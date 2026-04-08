@@ -5,6 +5,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "node:fs";
+import { config } from "../src/config.js";
 
 const INPUT_DIFF_FILE = "pr_diff.txt";
 const OUTPUT_REVIEW_FILE = "review_output.md";
@@ -79,13 +80,13 @@ if (!rawDiff.trim()) {
   process.exit(0);
 }
 
-if (!process.env.ANTHROPIC_API_KEY) {
+if (!config.anthropic.apiKey) {
   writeReview("Review übersprungen: ANTHROPIC_API_KEY ist nicht gesetzt.");
   process.exit(0);
 }
 
 const { diff, wasTrimmed } = trimDiff(rawDiff);
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 
 try {
   const message = await client.messages.create({

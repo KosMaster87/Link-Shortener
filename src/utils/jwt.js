@@ -5,8 +5,9 @@
  * @module src/utils/jwt
  */
 import { createHmac } from "node:crypto";
+import { config } from "../config.js";
 
-const JWT_SECRET = process.env.JWT_SECRET ?? "change-me-in-production";
+const JWT_SECRET = config.auth.jwtSecret;
 const TOKEN_TTL_SEC = 60 * 60 * 24; // 24 Stunden
 
 /**

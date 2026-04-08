@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "build": "echo \"No build step required for plain JavaScript\"",
+    "preview": "NODE_ENV=production node --env-file-if-exists=.env server.js",
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --env-file-if-exists=.env --test --test-concurrency=1",
     "test-link-service": "node --env-file-if-exists=.env --test tests/link-service.test.js",

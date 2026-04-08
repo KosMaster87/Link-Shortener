@@ -4,8 +4,9 @@
  *   speichert die Beschreibung in der DB und gibt Token-Kosten aus.
  */
 
-import pg from "pg";
 import Anthropic from "@anthropic-ai/sdk";
+import pg from "pg";
+import { config } from "../src/config.js";
 
 const INPUT_COST_PER_M = 1.0;
 const OUTPUT_COST_PER_M = 5.0;
@@ -14,14 +15,29 @@ const RATE_LIMIT_MS = 100;
 const SYSTEM_PROMPT =
   "Generiere eine Kurzbeschreibung (1 Satz, max 15 Wörter) für die gegebene URL. Antworte nur mit dem Satz, ohne Anführungszeichen.";
 
-const pool = new pg.Pool({
-  host: process.env.PGHOST ?? "/var/run/postgresql",
-  port: process.env.PGPORT,
-  database: process.env.PGDATABASE ?? "linkshort",
-  user: process.env.PGUSER ?? "dev2k",
-  password: process.env.PGPASSWORD,
-});
-const anthropic = new Anthropic();
+const poolConfig = config.database.url
+  ? {
+      connectionString: config.database.url,
+      ssl: config.isProduction ? { rejectUnauthorized: true } : false,
+    }
+  : {
+      host: config.database.host,
+      port: config.database.port || undefined,
+      database: config.database.database,
+      user: config.database.user,
+      password: config.database.password || undefined,
+    };
+
+const pool = new pg.Pool(poolConfig);
+
+if (!config.anthropic.apiKey) {
+  console.error(
+    "ANTHROPIC_API_KEY fehlt. Batch-Beschreibung kann nicht gestartet werden.",
+  );
+  process.exit(1);
+}
+
+const anthropic = new Anthropic({ apiKey: config.anthropic.apiKey });
 
 /**
  * Lädt alle short_links ohne Beschreibung.

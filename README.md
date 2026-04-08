@@ -46,16 +46,30 @@ Server runs on `http://localhost:3000`.
 Copy `.env.example` to `.env`:
 
 ```env
-JWT_SECRET=replace-with-a-long-random-string
-PGDATABASE=linkshort        # PostgreSQL database name
-# PORT=3000                 # optional, default 3000
-# NODE_ENV=development      # production suppresses stack traces
+PORT=3000
+NODE_ENV=development
 
-# Claude API for batch descriptions and PR review
+# Option A (recommended in production)
+# DATABASE_URL=postgresql://user:pass@host:5432/linkshort
+
+# Option B (local/alternative)
+PGHOST=/var/run/postgresql
+PGPORT=5432
+PGDATABASE=linkshort
+PGUSER=dev2k
+PGPASSWORD=
+
+# Required
+JWT_SECRET=replace-with-a-long-random-string
+SESSION_EXPIRY=86400
+
+# Optional
 ANTHROPIC_API_KEY=sk-ant-...
+LOG_LEVEL=info
+RATE_LIMIT_MAX=100
 ```
 
-PostgreSQL connects via Unix socket (`/var/run/postgresql`). Override host, port, and user via standard `PGHOST`, `PGPORT`, `PGUSER` env vars.
+In production, `DATABASE_URL` is preferred (for managed PostgreSQL like Neon/Supabase). Locally, the PG\* variables work out of the box.
 
 `ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
 
@@ -68,6 +82,12 @@ npm test
 Requires a running PostgreSQL instance with the `linkshort` database.
 
 ## API
+
+### Health
+
+| Method | Path    | Response                                           |
+| ------ | ------- | -------------------------------------------------- |
+| GET    | /health | `200 { status: "ok", ... }` or `503` on DB failure |
 
 ### Auth
 
@@ -116,13 +136,19 @@ All dashboard endpoints require `Authorization: Bearer <token>`.
 ```text
 link-shortener/
 ├── server.js
+├── render.yaml
 ├── scripts/
 │   ├── batch-describe.js
 │   └── pr-review.js
+├── .claude/
+│   └── commands/
+│       └── deploy-check.md
 ├── .github/
 │   └── workflows/
+│       ├── ci.yml
 │       └── pr-review.yml
 ├── src/
+│   ├── config.js
 │   ├── db/
 │   │   ├── index.js
 │   │   ├── schema.sql
@@ -199,6 +225,7 @@ link-shortener/
 | Day 19 | API foundations and cost awareness      | Done   |
 | Day 20 | Automation with batch descriptions      | Done   |
 | Day 21 | Team-ready workflows and shared setup   | Done   |
+| Day 22 | Deployment hardening and readiness      | Done   |
 
 ## Developer
 

@@ -8,6 +8,9 @@
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname } from "node:path";
+import { config } from "./src/config.js";
+import { pool } from "./src/db/index.js";
+import { requireAuth } from "./src/middleware/auth.js";
 import {
   handleAnalytics,
   handleAnalyticsByPeriod,
@@ -19,10 +22,9 @@ import { handleDashboard } from "./src/routes/dashboard.js";
 import { handleLinks } from "./src/routes/links.js";
 import { handleRedirect } from "./src/routes/redirect.js";
 import { getStats } from "./src/services/analytics-service.js";
-import { requireAuth } from "./src/middleware/auth.js";
 import { isAllowed, LIMITS } from "./src/utils/rate-limit.js";
 
-const PORT = process.env.PORT ?? 3000;
+const PORT = config.server.port;
 const BODY_LIMIT_BYTES = 16_384; // 16 KB
 
 const MIME_TYPES = {
@@ -49,11 +51,49 @@ const applySecurityHeaders = (res) => {
 };
 
 /**
- * Extrahiert die Client-IP für Rate-Limiting (nur socket.remoteAddress).
+ * Extrahiert die Client-IP für Rate-Limiting (Proxy-aware).
  * @param {import("node:http").IncomingMessage} req
  * @returns {string}
  */
-const clientIp = (req) => req.socket.remoteAddress ?? "unknown";
+const clientIp = (req) => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  const realIp = req.headers["x-real-ip"];
+  if (typeof realIp === "string" && realIp.trim()) return realIp.trim();
+
+  return req.socket.remoteAddress ?? "unknown";
+};
+
+/**
+ * Liefert einen kompakten Health-Status inkl. DB-Check.
+ * @param {import("node:http").ServerResponse} res
+ * @returns {Promise<void>}
+ */
+const handleHealth = async (res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+      }),
+    );
+  } catch {
+    res.writeHead(503, { "Content-Type": "application/json" });
+    res.end(
+      JSON.stringify({
+        status: "error",
+        timestamp: new Date().toISOString(),
+      }),
+    );
+  }
+};
 
 /**
  * Sendet 429 Too Many Requests als JSON.
@@ -289,6 +329,7 @@ const routeRequest = async (req, res) => {
   applySecurityHeaders(res);
   const { method } = req;
   const path = new URL(req.url, `http://localhost:${PORT}`).pathname;
+  if (method === "GET" && path === "/health") return await handleHealth(res);
   if (["POST", "PUT", "PATCH"].includes(method)) {
     req.body = await parseBody(req, res);
     if (req.body === null) return; // 413 wurde bereits gesendet
@@ -302,7 +343,7 @@ const server = createServer(async (req, res) => {
   try {
     await routeRequest(req, res);
   } catch (error) {
-    const isDev = process.env.NODE_ENV !== "production";
+    const isDev = config.nodeEnv !== "production";
     console.error("Unhandled error:", isDev ? error : error.message);
     if (!res.headersSent) {
       res.writeHead(500, { "Content-Type": "application/json" });
@@ -311,6 +352,9 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+const LISTEN_HOST = config.isProduction ? "0.0.0.0" : undefined;
+
+server.listen(PORT, LISTEN_HOST, () => {
+  const hostLabel = LISTEN_HOST ?? "localhost";
+  console.log(`Server running on http://${hostLabel}:${PORT}`);
 });
