@@ -49,15 +49,17 @@ Copy `.env.example` to `.env`:
 PORT=3000
 NODE_ENV=development
 
-# Option A (recommended in production)
+# Option A (production)
 # DATABASE_URL=postgresql://user:pass@host:5432/linkshort
+# USE_DATABASE_URL=true
 
 # Option B (local/alternative)
 PGHOST=/var/run/postgresql
 PGPORT=5432
 PGDATABASE=linkshort
-PGUSER=dev2k
+PGUSER=your-local-pg-user
 PGPASSWORD=
+USE_DATABASE_URL=false
 
 # Required
 JWT_SECRET=replace-with-a-long-random-string
@@ -69,7 +71,24 @@ LOG_LEVEL=info
 RATE_LIMIT_MAX=100
 ```
 
-In production, `DATABASE_URL` is preferred (for managed PostgreSQL like Neon/Supabase). Locally, the PG\* variables work out of the box.
+### Lokale Entwicklung vs. Production DB
+
+`DATABASE_URL` wird **nur genutzt wenn `USE_DATABASE_URL=true`** gesetzt ist.
+Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Variablen.
+
+| Umgebung | USE_DATABASE_URL | Genutzte Verbindung                                          |
+| -------- | ---------------- | ------------------------------------------------------------ |
+| Lokal    | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (Unix-Socket)               |
+| CI       | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (TCP, aus Workflow-Secrets) |
+| Render   | `true`           | `DATABASE_URL` (Neon/Managed PostgreSQL)                     |
+
+> **Hinweis:** Ist `DATABASE_URL` gesetzt und `USE_DATABASE_URL=false`, erscheint eine Warnung im Server-Log. Das ist kein Fehler — der Server nutzt trotzdem die lokale DB.
+
+**Neon lokal testen** (bewusst, nicht Standard):
+
+```bash
+USE_DATABASE_URL=true npm start
+```
 
 `ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
 
@@ -226,6 +245,24 @@ link-shortener/
 | Day 20 | Automation with batch descriptions      | Done   |
 | Day 21 | Team-ready workflows and shared setup   | Done   |
 | Day 22 | Deployment hardening and readiness      | Done   |
+| Day 23 | Feature freeze and final polish         | Done   |
+
+## Tag 23 Status (Feature Freeze & Polish)
+
+Tag 23 wurde mit Fokus auf Stabilisierung statt Feature-Ausbau umgesetzt.
+
+Abgeschlossene Punkte:
+
+- Security fix: `GET /api/links` ohne Auth liefert keine fremden Daten mehr
+- Ownership fix: Write-Operationen (`DELETE`/`PUT`/`PATCH toggle`) atomar mit User-Check
+- UX fix: Write-Error-Responses konsistent mit `error` + `message`
+- Performance fix: N+1 im Frontend-Link-Laden entfernt (`clickCount` direkt aus API)
+- Auth robustness: defensives Error-Handling in Login/Password-Verify
+- Regression fix: `optionalAuth` auf `GET /api/links`, damit eingeloggte Nutzer ihre Links sehen
+
+Rest-/Folgeaufgabe (separater Infrastruktur-Track):
+
+- CI-Secrets und ENV-Strategie in Team-Doku finalisieren
 
 ## Developer
 

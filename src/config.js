@@ -40,10 +40,31 @@ const parseIntWithFallback = (raw, fallback) => {
 };
 
 const nodeEnv = optionalEnv("NODE_ENV", "development");
+const isProduction = nodeEnv === "production";
+const useDbUrl = optionalEnv("USE_DATABASE_URL", "false") === "true";
+
+/**
+ * DATABASE_URL wird nur genutzt wenn USE_DATABASE_URL=true.
+ * Lokal/CI: USE_DATABASE_URL=false → PG*-Variablen greifen.
+ * Production: USE_DATABASE_URL=true als Secret setzen.
+ * Neon lokal testen: USE_DATABASE_URL=true temporär in .env.
+ */
+const resolveDatabaseUrl = () => {
+  const url = process.env.DATABASE_URL?.trim() || "";
+  if (!url) return "";
+  if (!useDbUrl) {
+    console.warn(
+      "[config] DATABASE_URL ist gesetzt, wird aber ignoriert " +
+        "(USE_DATABASE_URL !== 'true'). Lokale PG*-Variablen werden genutzt.",
+    );
+    return "";
+  }
+  return url;
+};
 
 export const config = {
   nodeEnv,
-  isProduction: nodeEnv === "production",
+  isProduction,
   server: {
     port: parseIntWithFallback(optionalEnv("PORT", "3000"), 3000),
   },
@@ -64,11 +85,11 @@ export const config = {
     max: parseIntWithFallback(optionalEnv("RATE_LIMIT_MAX", "100"), 100),
   },
   database: {
-    url: process.env.DATABASE_URL?.trim() || "",
+    url: resolveDatabaseUrl(),
     host: optionalEnv("PGHOST", "/var/run/postgresql"),
     port: process.env.PGPORT?.trim() || "",
     database: optionalEnv("PGDATABASE", "linkshort"),
-    user: optionalEnv("PGUSER", "dev2k"),
+    user: requireEnv("PGUSER"),
     password: process.env.PGPASSWORD?.trim() || "",
   },
 };
