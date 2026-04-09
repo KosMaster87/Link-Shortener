@@ -349,7 +349,8 @@
       // ── API helpers ──────────────────────────────────────────────────────────
 
       const api = {
-        getLinks: () => fetch("/api/links").then((r) => r.json()),
+        getLinks: () =>
+          fetch("/api/links", { headers: authHeaders() }).then((r) => r.json()),
         getStats: (code) =>
           fetch(`/api/links/${code}/stats`).then((r) => r.json()),
         createLink: (url) =>
@@ -472,6 +473,10 @@
               ?.addEventListener("click", async () => {
                 const res = await api.toggleLink(code);
                 if (handleWriteAuthStatus(res)) return;
+                if (!res.ok) {
+                  alert("Aktion fehlgeschlagen. Bitte Seite neu laden.");
+                  return;
+                }
                 loadLinks();
               });
 
@@ -481,6 +486,10 @@
                 if (!confirm(`Link "${code}" wirklich löschen?`)) return;
                 const res = await api.deleteLink(code);
                 if (handleWriteAuthStatus(res)) return;
+                if (!res.ok) {
+                  alert("Löschen fehlgeschlagen. Bitte Seite neu laden.");
+                  return;
+                }
                 loadLinks();
               });
           });

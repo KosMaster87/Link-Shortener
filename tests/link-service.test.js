@@ -11,6 +11,7 @@ import { pool } from "../src/db/index.js";
 import {
   createLink,
   deleteLink,
+  getAllLinks,
   getLink,
   toggleActive,
   updateLink,
@@ -38,6 +39,33 @@ afterEach(async () => {
 // Verbindung schließen, damit der Node-Prozess sauber beendet wird.
 // Ohne pool.end() hängt der Test-Runner nach dem letzten Test.
 after(() => pool.end());
+
+// ─── getAllLinks ──────────────────────────────────────────────────────────────
+
+describe("getAllLinks", () => {
+  // SECURITY: Ohne userId darf getAllLinks nie fremde Links zurückgeben.
+  // Dieser Test sichert den BLOCKER-Fix ab: unauthentifizierte Requests
+  // dürfen keine Daten erhalten, auch wenn Links in der DB existieren.
+  it("gibt leeres Array zurück wenn keine userId übergeben wird", async () => {
+    const created = await createLink({
+      url: "https://example.com/public-leak-test",
+    });
+    createdCodes.push(created.data.code);
+
+    const result = await getAllLinks(null);
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.data, []);
+  });
+
+  // SECURITY: undefined verhält sich wie null – kein Default-Leak.
+  it("gibt leeres Array zurück bei undefined userId", async () => {
+    const result = await getAllLinks(undefined);
+
+    assert.equal(result.success, true);
+    assert.deepEqual(result.data, []);
+  });
+});
 
 // ─── createLink ──────────────────────────────────────────────────────────────
 

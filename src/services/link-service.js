@@ -113,17 +113,16 @@ export const getLink = async (code) => {
 
 /**
  * Lädt alle Short-Links eines Users aus der DB (nach created_at DESC).
- * Ohne userId werden alle Links zurückgegeben (Backward-Compat für Public-GET).
+ * Ohne userId wird ein leeres Array zurückgegeben – nicht alle Links aller User.
  * @param {string | null} userId
  * @returns {Promise<{ success: true, data: Link[] }>}
  */
 export const getAllLinks = async (userId = null) => {
-  const result = userId
-    ? await pool.query(
-        "SELECT * FROM short_links WHERE user_id = $1 ORDER BY created_at DESC",
-        [userId],
-      )
-    : await pool.query("SELECT * FROM short_links ORDER BY created_at DESC");
+  if (!userId) return ok([]);
+  const result = await pool.query(
+    "SELECT * FROM short_links WHERE user_id = $1 ORDER BY created_at DESC",
+    [userId],
+  );
   return ok(result.rows.map(toLink));
 };
 
