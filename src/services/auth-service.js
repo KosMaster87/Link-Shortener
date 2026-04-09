@@ -55,14 +55,20 @@ const hashPassword = async (password) => {
 /**
  * Vergleicht ein Klartextpasswort mit einem gespeicherten Hash.
  * Verwendet timingSafeEqual gegen Timing-Angriffe.
+ * Gibt false zurück wenn stored ein unbekanntes Format hat (korrupte DB-Zeile),
+ * statt eine Exception zu werfen.
  * @param {string} password
  * @param {string} stored - Format salt:hash
  * @returns {Promise<boolean>}
  */
 const verifyPassword = async (password, stored) => {
-  const [salt, hash] = stored.split(":");
+  const parts = stored?.split(":");
+  if (parts?.length !== 2) return false;
+  const [salt, hash] = parts;
+  const hashBuf = Buffer.from(hash, "hex");
   const derived = await scryptAsync(password, salt, KEY_LEN);
-  return timingSafeEqual(Buffer.from(hash, "hex"), derived);
+  if (hashBuf.length !== derived.length) return false;
+  return timingSafeEqual(hashBuf, derived);
 };
 
 /**
@@ -108,20 +114,24 @@ export const login = async (email, password) => {
       code: "INVALID_CREDENTIALS",
       message: "Ungültige Anmeldedaten.",
     });
-  const { rows } = await pool.query(
-    "SELECT id, email, password_hash FROM users WHERE email = $1",
-    [email.toLowerCase()],
-  );
-  if (rows.length === 0)
-    return err({
-      code: "INVALID_CREDENTIALS",
-      message: "Ungültige Anmeldedaten.",
-    });
-  const match = await verifyPassword(password, rows[0].password_hash);
-  if (!match)
-    return err({
-      code: "INVALID_CREDENTIALS",
-      message: "Ungültige Anmeldedaten.",
-    });
-  return ok({ id: rows[0].id, email: rows[0].email });
+  try {
+    const { rows } = await pool.query(
+      "SELECT id, email, password_hash FROM users WHERE email = $1",
+      [email.toLowerCase()],
+    );
+    if (rows.length === 0)
+      return err({
+        code: "INVALID_CREDENTIALS",
+        message: "Ungültige Anmeldedaten.",
+      });
+    const match = await verifyPassword(password, rows[0].password_hash);
+    if (!match)
+      return err({
+        code: "INVALID_CREDENTIALS",
+        message: "Ungültige Anmeldedaten.",
+      });
+    return ok({ id: rows[0].id, email: rows[0].email });
+  } catch {
+    return err({ code: "DB_ERROR", message: "Datenbankfehler." });
+  }
 };
