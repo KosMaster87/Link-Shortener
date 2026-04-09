@@ -6,6 +6,7 @@
  * @module tests/link-service.test
  */
 import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
 import { after, afterEach, describe, it } from "node:test";
 import { pool } from "../src/db/index.js";
 import {
@@ -252,6 +253,17 @@ describe("toggleActive", () => {
   });
 });
 
+// ── Test-Helper: User direkt in DB anlegen (ohne auth-service Dependency) ────
+
+const insertTestUser = async () => {
+  const { rows } = await pool.query(
+    "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id",
+    [`test-owner-${randomUUID()}@example.com`, "fakesalt:fakehash"],
+  );
+  createdUserIds.push(rows[0].id);
+  return rows[0].id;
+};
+
 // ─── deleteLink ──────────────────────────────────────────────────────────────
 
 describe("deleteLink", () => {
@@ -270,5 +282,219 @@ describe("deleteLink", () => {
     assert.equal(afterDelete.success, false);
     assert.equal(afterDelete.error.code, "NOT_FOUND");
     // code nicht in createdCodes pushen – der Link ist bereits gelöscht
+  });
+});
+
+// ─── Atomare Ownership-Checks (TOCTOU-Fix) ───────────────────────────────────
+
+describe("deleteLink – Ownership atomar", () => {
+  // FORBIDDEN: Der Link existiert, aber userId stimmt nicht überein.
+  // Prüft dass kein Check-then-act-Gap existiert: die atomare CTE-Query
+  // gibt FORBIDDEN zurück ohne zwei separate Roundtrips.
+  it("gibt FORBIDDEN zurück wenn userId nicht dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/owned" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await deleteLink(created.data.code, randomUUID());
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "FORBIDDEN");
+  });
+
+  it("gibt NOT_FOUND zurück für unbekannten Code mit userId", async () => {
+    const result = await deleteLink("xxxxxx", randomUUID());
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "NOT_FOUND");
+  });
+
+  it("löscht erfolgreich wenn userId dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/mine" },
+      ownerId,
+    );
+
+    const result = await deleteLink(created.data.code, ownerId);
+
+    assert.equal(result.success, true);
+    // Link ist weg – kein cleanup nötig
+  });
+});
+
+describe("updateLink – Ownership atomar", () => {
+  it("gibt FORBIDDEN zurück wenn userId nicht dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/upd-own" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await updateLink(
+      created.data.code,
+      "https://example.com/new",
+      randomUUID(),
+    );
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "FORBIDDEN");
+  });
+
+  it("gibt NOT_FOUND zurück für unbekannten Code mit userId", async () => {
+    const result = await updateLink(
+      "xxxxxx",
+      "https://example.com",
+      randomUUID(),
+    );
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "NOT_FOUND");
+  });
+
+  // SUCCESS-CASE: Eigentümer kann seinen Link aktualisieren.
+  // Stellt sicher dass die atomare CTE-Query die neue URL korrekt zurückliefert.
+  it("aktualisiert erfolgreich wenn userId dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/upd-ok" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await updateLink(
+      created.data.code,
+      "https://example.com/upd-ok-neu",
+      ownerId,
+    );
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.originalUrl, "https://example.com/upd-ok-neu");
+  });
+});
+
+describe("toggleActive – Ownership atomar", () => {
+  it("gibt FORBIDDEN zurück wenn userId nicht dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/tog-own" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await toggleActive(created.data.code, randomUUID());
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "FORBIDDEN");
+  });
+
+  it("gibt NOT_FOUND zurück für unbekannten Code mit userId", async () => {
+    const result = await toggleActive("xxxxxx", randomUUID());
+
+    assert.equal(result.success, false);
+    assert.equal(result.error.code, "NOT_FOUND");
+  });
+
+  // SUCCESS-CASE: Eigentümer kann seinen Link toggeln.
+  // Stellt sicher dass die CTE-Query is_active korrekt umschaltet (nicht SET, sondern NOT).
+  it("schaltet is_active um wenn userId dem Eigentümer entspricht", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/tog-ok" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await toggleActive(created.data.code, ownerId);
+
+    assert.equal(result.success, true);
+    assert.equal(result.data.isActive, false); // default true → toggle → false
+  });
+});
+
+// ─── getAllLinks – clickCount ─────────────────────────────────────────────────
+
+describe("getAllLinks – clickCount", () => {
+  // Sichert den N+1-Fix ab: GET /api/links liefert click_count direkt,
+  // UI braucht keinen separaten /stats-Aufruf mehr pro Link.
+  it("enthält clickCount = 0 wenn kein Klick vorhanden", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/clicks0" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    const result = await getAllLinks(ownerId);
+
+    assert.equal(result.success, true);
+    const link = result.data.find((l) => l.code === created.data.code);
+    assert.ok(link, "Link nicht in getAllLinks-Ergebnis gefunden");
+    assert.equal(link.clickCount, 0);
+  });
+
+  it("enthält clickCount > 0 nach echtem Klick-Eintrag in der DB", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/clicks1" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    // Klick direkt einfügen (kein is_bot-Flag → zählt)
+    await pool.query(
+      "INSERT INTO link_clicks (code, referrer, ip_hash) VALUES ($1, $2, $3)",
+      [created.data.code, null, "testhash"],
+    );
+
+    const result = await getAllLinks(ownerId);
+    const link = result.data.find((l) => l.code === created.data.code);
+    assert.equal(link.clickCount, 1);
+  });
+
+  it("zählt Bot-Klicks nicht in clickCount", async () => {
+    const ownerId = await insertTestUser();
+    const created = await createLink(
+      { url: "https://example.com/bot" },
+      ownerId,
+    );
+    createdCodes.push(created.data.code);
+
+    await pool.query(
+      "INSERT INTO link_clicks (code, referrer, ip_hash, is_bot) VALUES ($1, $2, $3, TRUE)",
+      [created.data.code, null, "botip"],
+    );
+
+    const result = await getAllLinks(ownerId);
+    const link = result.data.find((l) => l.code === created.data.code);
+    assert.equal(link.clickCount, 0);
+  });
+
+  // SECURITY: Cross-User-Isolation – User B darf Links von User A nicht sehen.
+  // Sichert den BLOCKER-Fix auf Service-Ebene ab: WHERE user_id = $1 muss
+  // tatsächlich isolieren, nicht nur leere Arrays für null/undefined liefern.
+  it("gibt User B keine Links von User A zurück", async () => {
+    const userAId = await insertTestUser();
+    const userBId = await insertTestUser();
+
+    const createdByA = await createLink(
+      { url: "https://example.com/user-a-only" },
+      userAId,
+    );
+    createdCodes.push(createdByA.data.code);
+
+    const result = await getAllLinks(userBId);
+
+    assert.equal(result.success, true);
+    const leaked = result.data.find((l) => l.code === createdByA.data.code);
+    assert.equal(
+      leaked,
+      undefined,
+      "User B sieht Link von User A – Datenleck!",
+    );
   });
 });

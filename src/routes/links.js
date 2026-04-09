@@ -8,7 +8,6 @@ import {
   createLink,
   deleteLink,
   getAllLinks,
-  getLink,
   toggleActive,
   updateLink,
 } from "../services/link-service.js";
@@ -32,20 +31,6 @@ const ERROR_STATUS = {
 const send = (res, status, data) => {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(data));
-};
-
-/**
- * Prüft ob der eingeloggte User Besitzer des Links ist.
- * Gibt null zurück bei Erfolg, oder ein Error-Result wenn nicht berechtigt.
- * @param {string} code
- * @param {string} userId
- * @returns {Promise<null | { error: Object }>}
- */
-const checkOwnership = async (code, userId) => {
-  const result = await getLink(code);
-  if (!result.success) return { error: { code: "NOT_FOUND" } };
-  if (result.data.userId !== userId) return { error: { code: "FORBIDDEN" } };
-  return null;
 };
 
 /**
@@ -76,29 +61,25 @@ const handlePost = async (req, res) => {
 };
 
 /**
- * Löscht einen Short-Link (nur Besitzer).
+ * Löscht einen Short-Link atomar – Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
  * @param {string} userId
  * @returns {Promise<void>}
  */
 const handleDelete = async (res, code, userId) => {
-  const ownerErr = await checkOwnership(code, userId);
-  if (ownerErr)
-    return send(res, ERROR_STATUS[ownerErr.error.code] ?? 500, {
-      error: ownerErr.error.code,
-    });
-  const result = await deleteLink(code);
+  const result = await deleteLink(code, userId);
   if (!result.success)
     return send(res, ERROR_STATUS[result.error.code] ?? 500, {
       error: result.error.code,
+      message: result.error.message,
     });
   res.writeHead(204);
   return res.end();
 };
 
 /**
- * Aktualisiert die URL eines Short-Links (nur Besitzer).
+ * Aktualisiert die URL eines Short-Links atomar – Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
@@ -106,36 +87,28 @@ const handleDelete = async (res, code, userId) => {
  * @returns {Promise<void>}
  */
 const handlePut = async (req, res, code, userId) => {
-  const ownerErr = await checkOwnership(code, userId);
-  if (ownerErr)
-    return send(res, ERROR_STATUS[ownerErr.error.code] ?? 500, {
-      error: ownerErr.error.code,
-    });
-  const result = await updateLink(code, req.body.url);
+  const result = await updateLink(code, req.body.url, userId);
   if (!result.success)
     return send(res, ERROR_STATUS[result.error.code] ?? 500, {
       error: result.error.code,
+      message: result.error.message,
     });
   return send(res, 200, result.data);
 };
 
 /**
- * Schaltet is_active eines Short-Links um (nur Besitzer).
+ * Schaltet is_active eines Short-Links atomar um – Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
  * @param {string} userId
  * @returns {Promise<void>}
  */
 const handleToggle = async (res, code, userId) => {
-  const ownerErr = await checkOwnership(code, userId);
-  if (ownerErr)
-    return send(res, ERROR_STATUS[ownerErr.error.code] ?? 500, {
-      error: ownerErr.error.code,
-    });
-  const result = await toggleActive(code);
+  const result = await toggleActive(code, userId);
   if (!result.success)
     return send(res, ERROR_STATUS[result.error.code] ?? 500, {
       error: result.error.code,
+      message: result.error.message,
     });
   return send(res, 200, result.data);
 };

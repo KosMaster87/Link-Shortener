@@ -113,63 +113,119 @@ export const getLink = async (code) => {
 
 /**
  * Lädt alle Short-Links eines Users aus der DB (nach created_at DESC).
+ * Reichert jeden Link mit der Klickanzahl (ohne Bot-Traffic) an.
  * Ohne userId wird ein leeres Array zurückgegeben – nicht alle Links aller User.
  * @param {string | null} userId
- * @returns {Promise<{ success: true, data: Link[] }>}
+ * @returns {Promise<{ success: true, data: Array<Link & { clickCount: number }> }>}
  */
 export const getAllLinks = async (userId = null) => {
   if (!userId) return ok([]);
-  const result = await pool.query(
-    "SELECT * FROM short_links WHERE user_id = $1 ORDER BY created_at DESC",
+  const { rows } = await pool.query(
+    `SELECT sl.*, COUNT(lc.id) FILTER (WHERE lc.is_bot = FALSE)::int AS click_count
+     FROM short_links sl
+     LEFT JOIN link_clicks lc ON sl.code = lc.code
+     WHERE sl.user_id = $1
+     GROUP BY sl.code
+     ORDER BY sl.created_at DESC`,
     [userId],
   );
-  return ok(result.rows.map(toLink));
+  return ok(
+    rows.map((row) => ({ ...toLink(row), clickCount: row.click_count ?? 0 })),
+  );
 };
+
+// ── Atomare Ownership-Queries (eine DB-Operation für Check + Write) ────────────
+
+/**
+ * Prüft Existenz und Ownership in einer atomaren Query via CTE.
+ * LEFT JOIN liefert 0 Rows wenn Code nicht existiert, 1 Row mit
+ * upd.code = null wenn der Link existiert aber userId nicht passt.
+ */
+const queryOwned = (writeCte, params) =>
+  pool.query(
+    `WITH target AS (SELECT code AS tc FROM short_links WHERE code = $1),
+     upd AS (${writeCte})
+     SELECT target.tc, upd.* FROM target LEFT JOIN upd ON true`,
+    params,
+  );
 
 /**
  * Löscht den Short-Link mit dem gegebenen Code aus der DB.
- * Gibt NOT_FOUND zurück wenn kein Eintrag mit diesem Code existiert.
+ * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Gibt NOT_FOUND oder FORBIDDEN zurück, nie beides.
  * @param {string} code - 6-stelliger alphanumerischer Slug
+ * @param {string | null} userId - UUID des anfragenden Users
  * @returns {Promise<{ success: true, data: undefined } | { success: false, error: { code: string, message: string } }>}
  */
-export const deleteLink = async (code) => {
-  const result = await pool.query(
-    "DELETE FROM short_links WHERE code = $1 RETURNING code",
-    [code],
+export const deleteLink = async (code, userId = null) => {
+  if (!userId) {
+    const result = await pool.query(
+      "DELETE FROM short_links WHERE code = $1 RETURNING code",
+      [code],
+    );
+    return result.rows.length === 0 ? err("NOT_FOUND") : ok();
+  }
+  const { rows } = await queryOwned(
+    "DELETE FROM short_links WHERE code = $1 AND user_id = $2 RETURNING code",
+    [code, userId],
   );
-  if (result.rows.length === 0) return err("NOT_FOUND");
+  if (rows.length === 0) return err("NOT_FOUND");
+  if (!rows[0].code) return err("FORBIDDEN");
   return ok();
 };
 
 /**
  * Aktualisiert die original_url eines bestehenden Short-Links.
- * Gibt INVALID_URL zurück wenn die neue URL kein gültiges Format hat.
- * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Gibt INVALID_URL, NOT_FOUND oder FORBIDDEN zurück.
  * @param {string} code - 6-stelliger alphanumerischer Slug
  * @param {string} url - Neue Ziel-URL
+ * @param {string | null} userId - UUID des anfragenden Users
  * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
-export const updateLink = async (code, url) => {
+export const updateLink = async (code, url, userId = null) => {
   if (!isValidUrl(url)) return err("INVALID_URL");
-  const result = await pool.query(
-    "UPDATE short_links SET original_url = $1 WHERE code = $2 RETURNING *",
-    [url, code],
+  if (!userId) {
+    const result = await pool.query(
+      "UPDATE short_links SET original_url = $1 WHERE code = $2 RETURNING *",
+      [url, code],
+    );
+    return result.rows.length === 0
+      ? err("NOT_FOUND")
+      : ok(toLink(result.rows[0]));
+  }
+  const { rows } = await queryOwned(
+    "UPDATE short_links SET original_url = $2 WHERE code = $1 AND user_id = $3 RETURNING *",
+    [code, url, userId],
   );
-  if (result.rows.length === 0) return err("NOT_FOUND");
-  return ok(toLink(result.rows[0]));
+  if (rows.length === 0) return err("NOT_FOUND");
+  if (!rows[0].code) return err("FORBIDDEN");
+  return ok(toLink(rows[0]));
 };
 
 /**
  * Schaltet is_active eines Short-Links um (true → false, false → true).
- * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
+ * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Gibt NOT_FOUND oder FORBIDDEN zurück.
  * @param {string} code - 6-stelliger alphanumerischer Slug
+ * @param {string | null} userId - UUID des anfragenden Users
  * @returns {Promise<{ success: true, data: Link } | { success: false, error: { code: string, message: string } }>}
  */
-export const toggleActive = async (code) => {
-  const result = await pool.query(
-    "UPDATE short_links SET is_active = NOT is_active WHERE code = $1 RETURNING *",
-    [code],
+export const toggleActive = async (code, userId = null) => {
+  if (!userId) {
+    const result = await pool.query(
+      "UPDATE short_links SET is_active = NOT is_active WHERE code = $1 RETURNING *",
+      [code],
+    );
+    return result.rows.length === 0
+      ? err("NOT_FOUND")
+      : ok(toLink(result.rows[0]));
+  }
+  const { rows } = await queryOwned(
+    "UPDATE short_links SET is_active = NOT is_active WHERE code = $1 AND user_id = $2 RETURNING *",
+    [code, userId],
   );
-  if (result.rows.length === 0) return err("NOT_FOUND");
-  return ok(toLink(result.rows[0]));
+  if (rows.length === 0) return err("NOT_FOUND");
+  if (!rows[0].code) return err("FORBIDDEN");
+  return ok(toLink(rows[0]));
 };
