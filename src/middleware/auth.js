@@ -35,6 +35,19 @@ export const requireAuth = (req, res, next) => {
 };
 
 /**
+ * Optionale Auth: setzt req.user wenn Token valide, sendet kein 401.
+ * Geeignet für Routen die mit und ohne Auth funktionieren sollen.
+ * @param {import("node:http").IncomingMessage} req
+ * @returns {void}
+ */
+export const optionalAuth = (req) => {
+  const token = extractBearer(req);
+  if (!token) return;
+  const payload = verifyToken(token);
+  if (payload) req.user = { id: payload.sub, email: payload.email };
+};
+
+/**
  * Sendet 401 Unauthorized als JSON.
  * @param {import("node:http").ServerResponse} res
  * @returns {void}

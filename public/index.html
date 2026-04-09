@@ -350,9 +350,10 @@
 
       const api = {
         getLinks: () =>
-          fetch("/api/links", { headers: authHeaders() }).then((r) => r.json()),
-        getStats: (code) =>
-          fetch(`/api/links/${code}/stats`).then((r) => r.json()),
+          fetch("/api/links", { headers: authHeaders() }).then((r) => {
+            if (!r.ok) throw new Error(r.status);
+            return r.json();
+          }),
         createLink: (url) =>
           fetch("/api/links", {
             method: "POST",
@@ -394,11 +395,6 @@
         const tbody = document.getElementById("links-body");
         try {
           const links = await api.getLinks();
-          const statsAll = await Promise.all(
-            links.map((l) =>
-              api.getStats(l.code).catch(() => ({ totalClicks: "–" })),
-            ),
-          );
 
           if (links.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="empty">Noch keine Links vorhanden.</td></tr>`;
@@ -406,7 +402,7 @@
           }
 
           tbody.innerHTML = links
-            .map((link, i) => renderRow(link, statsAll[i].totalClicks))
+            .map((link) => renderRow(link, link.clickCount ?? "–"))
             .join("");
           attachRowHandlers();
         } catch {

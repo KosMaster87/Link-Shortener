@@ -10,7 +10,7 @@ import { createServer } from "node:http";
 import { extname } from "node:path";
 import { config } from "./src/config.js";
 import { pool } from "./src/db/index.js";
-import { requireAuth } from "./src/middleware/auth.js";
+import { optionalAuth, requireAuth } from "./src/middleware/auth.js";
 import {
   handleAnalytics,
   handleAnalyticsByPeriod,
@@ -251,9 +251,11 @@ const routeApi = async (req, res, method, path) => {
   if (!isAllowed(ip, "general", LIMITS.general))
     return sendTooManyRequests(res);
 
-  // Links: GET öffentlich, Schreibops erfordern Auth
-  if (method === "GET" && path === "/api/links")
+  // Links: GET mit optionalem Token (eingeloggte User sehen eigene Links)
+  if (method === "GET" && path === "/api/links") {
+    optionalAuth(req);
     return await handleLinks(req, res, {});
+  }
 
   if (method === "POST" && path === "/api/links") {
     if (!isAllowed(ip, "createLink", LIMITS.createLink))
