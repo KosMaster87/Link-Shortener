@@ -1,5 +1,14 @@
 # CLAUDE.md
 
+## Deployment
+
+- **Plattform:** Render (render.yaml im Root)
+- **Production-URL:** https://link-shortener-h40z.onrender.com
+- **Health-Check:** https://link-shortener-h40z.onrender.com/health
+- **Monitoring:** UptimeRobot (ausstehend)
+- **DB:** Render PostgreSQL (Frankfurt) via DATABASE_URL + USE_DATABASE_URL=true
+- **Schema:** manuell eingespielt via psql (schema.sql + migrations 002, 003)
+
 ## Projekt-Übersicht
 
 **LinkShort** — URL-Shortener Mini-SaaS mit Klick-Analytics und Dashboard (lnk.sh/abc123).

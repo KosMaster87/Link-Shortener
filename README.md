@@ -2,6 +2,8 @@
 
 A minimal URL shortener built with Node.js and PostgreSQL. Create short links, track clicks, and view analytics in a dashboard.
 
+**Live:** https://link-shortener-h40z.onrender.com
+
 ## Features
 
 - Create short links with optional custom slug
@@ -80,7 +82,7 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 | -------- | ---------------- | ------------------------------------------------------------ |
 | Lokal    | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (Unix-Socket)               |
 | CI       | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (TCP, aus Workflow-Secrets) |
-| Render   | `true`           | `DATABASE_URL` (Neon/Managed PostgreSQL)                     |
+| Render   | `true`           | `DATABASE_URL` (Render PostgreSQL / Managed PostgreSQL)      |
 
 > **Hinweis:** Ist `DATABASE_URL` gesetzt und `USE_DATABASE_URL=false`, erscheint eine Warnung im Server-Log. Das ist kein Fehler — der Server nutzt trotzdem die lokale DB.
 
@@ -205,6 +207,7 @@ link-shortener/
 │   ├── analytics-referrers.test.js
 │   ├── link-service.test.js
 │   ├── analytics-service.test.js
+│   ├── auth-service.test.js
 │   ├── dashboard-auth.test.js
 │   └── e2e-redirect.test.js
 ├── .env.example
@@ -218,54 +221,9 @@ link-shortener/
 - `.github/workflows/pr-review.yml` runs an automated Claude-based PR review for internal pull requests
 - `scripts/pr-review.js` builds the review comment and updates the existing bot comment instead of posting duplicates
 
-## Course Progress
-
-| Day    | Topic                                   | Status |
-| ------ | --------------------------------------- | ------ |
-| Day 0  | Setup and project definition            | Done   |
-| Day 1  | CLAUDE.md and project configuration     | Done   |
-| Day 2  | Architecture, database, server skeleton | Done   |
-| Day 3  | URL shortening feature                  | Done   |
-| Day 4  | Iteration and refactoring               | Done   |
-| Day 5  | TDD analytics service                   | Done   |
-| Day 6  | Commands and reusable workflows         | Done   |
-| Day 7  | Integration, E2E, frontend polish       | Done   |
-| Day 8  | Context and token awareness             | Done   |
-| Day 9  | MCP server with direct database access  | Done   |
-| Day 10 | Analytics dashboard via MCP             | Done   |
-| Day 11 | Error handling and edge cases           | Done   |
-| Day 12 | Performance and optimization            | Done   |
-| Day 13 | Security review and authentication      | Done   |
-| Day 14 | Documentation                           | Done   |
-| Day 15 | Hooks and automatic quality             | Done   |
-| Day 16 | Agents and delegated workflows          | Done   |
-| Day 17 | CI/CD pipeline and quality gate         | Done   |
-| Day 18 | Advanced analytics API workflow         | Done   |
-| Day 19 | API foundations and cost awareness      | Done   |
-| Day 20 | Automation with batch descriptions      | Done   |
-| Day 21 | Team-ready workflows and shared setup   | Done   |
-| Day 22 | Deployment hardening and readiness      | Done   |
-| Day 23 | Feature freeze and final polish         | Done   |
-
-## Tag 23 Status (Feature Freeze & Polish)
-
-Tag 23 wurde mit Fokus auf Stabilisierung statt Feature-Ausbau umgesetzt.
-
-Abgeschlossene Punkte:
-
-- Security fix: `GET /api/links` ohne Auth liefert keine fremden Daten mehr
-- Ownership fix: Write-Operationen (`DELETE`/`PUT`/`PATCH toggle`) atomar mit User-Check
-- UX fix: Write-Error-Responses konsistent mit `error` + `message`
-- Performance fix: N+1 im Frontend-Link-Laden entfernt (`clickCount` direkt aus API)
-- Auth robustness: defensives Error-Handling in Login/Password-Verify
-- Regression fix: `optionalAuth` auf `GET /api/links`, damit eingeloggte Nutzer ihre Links sehen
-
-Rest-/Folgeaufgabe (separater Infrastruktur-Track):
-
-- CI-Secrets und ENV-Strategie in Team-Doku finalisieren
-
 ## Developer
 
 Konstantin Aksenov
 GitHub: https://github.com/KosMaster87
 Email: Konstantin.Aksenov@dev2k.org
+Portfolio: https://portfolio.dev2k.org
