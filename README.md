@@ -2,7 +2,7 @@
 
 A minimal URL shortener built with Node.js and PostgreSQL. Create short links, track clicks, and view analytics in a dashboard.
 
-**Live:** https://link-shortener-h40z.onrender.com
+**Live:** https://link-shortener.dev2k.org
 
 ## Features
 
@@ -15,6 +15,7 @@ A minimal URL shortener built with Node.js and PostgreSQL. Create short links, t
 - Rate limiting per IP, security headers, input validation
 - Batch automation for missing descriptions
 - Automated PR review via GitHub Actions + Claude API
+- Feedback widget on all pages (no auth required), with email notification via Resend
 
 ## Installation
 
@@ -30,6 +31,7 @@ createdb linkshort
 psql linkshort < src/db/schema.sql
 psql linkshort < src/db/migrations/002_add_users.sql
 psql linkshort < src/db/migrations/003_add_description.sql
+psql linkshort < src/db/migrations/004_add_feedback.sql
 
 # 4. Configure environment
 cp .env.example .env
@@ -66,6 +68,11 @@ USE_DATABASE_URL=false
 # Required
 JWT_SECRET=replace-with-a-long-random-string
 SESSION_EXPIRY=86400
+
+# Email notifications (optional — skip to disable)
+RESEND_API_KEY=
+FROM_EMAIL=
+TO_EMAIL=
 
 # Optional
 ANTHROPIC_API_KEY=sk-ant-...
@@ -143,6 +150,14 @@ All dashboard endpoints require `Authorization: Bearer <token>`.
 | GET    | /api/dashboard/clicks-per-day | days (1–365)  |
 | GET    | /api/dashboard/referrer/:code | —             |
 
+### Feedback
+
+| Method | Path          | Body                            | Auth |
+| ------ | ------------- | ------------------------------- | ---- |
+| POST   | /api/feedback | `{ type, description, email? }` | none |
+
+`type`: `bug` \| `improvement` \| `other`. Returns `201 { message }` on success.
+
 ### Analytics
 
 | Method | Path                           | Query Params              |
@@ -183,12 +198,14 @@ link-shortener/
 │   │   ├── links.js
 │   │   ├── redirect.js
 │   │   ├── analytics.js
-│   │   └── dashboard.js
+│   │   ├── dashboard.js
+│   │   └── feedback.js
 │   ├── services/
 │   │   ├── auth-service.js
 │   │   ├── link-service.js
 │   │   ├── analytics-service.js
-│   │   └── dashboard-service.js
+│   │   ├── dashboard-service.js
+│   │   └── email-service.js
 │   └── utils/
 │       ├── device-classifier.js
 │       ├── jwt.js
@@ -200,7 +217,8 @@ link-shortener/
 │   ├── login.html
 │   ├── dashboard.html
 │   ├── app.js
-│   └── style.css
+│   ├── style.css
+│   └── feedback-widget.js
 ├── tests/
 │   ├── analytics-devices.test.js
 │   ├── analytics-period.test.js
@@ -209,7 +227,9 @@ link-shortener/
 │   ├── analytics-service.test.js
 │   ├── auth-service.test.js
 │   ├── dashboard-auth.test.js
-│   └── e2e-redirect.test.js
+│   ├── e2e-redirect.test.js
+│   ├── feedback.test.js
+│   └── email-service.test.js
 ├── .env.example
 ├── package.json
 └── README.md
