@@ -1,30 +1,21 @@
 /**
- * @fileoverview Unit-Tests für email-service
- * @description Testet sendFeedbackNotification ohne echten SMTP-Server.
- *   Nutzt Dependency Injection (optionaler _transporter-Parameter) statt
- *   mock.module, damit kein experimenteller Flag benötigt wird.
+ * @fileoverview Unit-Tests für email-service (Resend API)
+ * @description Testet sendFeedbackNotification ohne echten HTTP-Request.
+ *   Nutzt Dependency Injection (_fetch-Parameter) statt mock.module.
  * @module tests/email-service.test
  */
 import assert from "node:assert/strict";
-import { afterEach, describe, it } from "node:test";
+import { describe, it } from "node:test";
 import { sendFeedbackNotification } from "../src/services/email-service.js";
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
-/**
- * Setzt Env-Variablen temporär und stellt sie nach dem Test wieder her.
- * Verwendet delete für undefined-Werte (process.env[k] = undefined würde
- * den String "undefined" setzen).
- */
 const withEnv = (vars, fn) => async () => {
   const original = {};
   for (const [k, v] of Object.entries(vars)) {
     original[k] = process.env[k];
-    if (v === undefined) {
-      delete process.env[k];
-    } else {
-      process.env[k] = String(v);
-    }
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = String(v);
   }
   try {
     await fn();
@@ -36,39 +27,35 @@ const withEnv = (vars, fn) => async () => {
   }
 };
 
-/** Erstellt einen Fake-Transporter der sendMail aufzeichnet. */
-const fakeTransporter = () => {
+/** Fake-fetch der den gesendeten Request aufzeichnet. */
+const fakeFetch = (status = 200) => {
   let captured = null;
-  return {
-    sendMail: async (options) => {
-      captured = options;
-    },
-    getCaptured: () => captured,
+  const fn = async (url, options) => {
+    captured = { url, ...options, body: JSON.parse(options.body) };
+    return { ok: status >= 200 && status < 300, status, text: async () => "" };
   };
+  fn.getCaptured = () => captured;
+  return fn;
 };
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe("sendFeedbackNotification", () => {
-  afterEach(() => {
-    // Env-Cleanup falls ein Test das vergisst
-  });
-
   it(
-    "überspringt Senden wenn SMTP_PASS nicht gesetzt ist",
+    "überspringt Senden wenn RESEND_API_KEY nicht gesetzt ist",
     withEnv(
       {
-        SMTP_PASS: undefined,
+        RESEND_API_KEY: undefined,
         TO_EMAIL: "to@example.com",
         FROM_EMAIL: "from@example.com",
       },
       async () => {
-        const t = fakeTransporter();
-        await sendFeedbackNotification({ type: "bug", description: "Test" }, t);
+        const f = fakeFetch();
+        await sendFeedbackNotification({ type: "bug", description: "Test" }, f);
         assert.equal(
-          t.getCaptured(),
+          f.getCaptured(),
           null,
-          "sendMail darf nicht aufgerufen werden",
+          "fetch darf nicht aufgerufen werden",
         );
       },
     ),
@@ -78,17 +65,17 @@ describe("sendFeedbackNotification", () => {
     "überspringt Senden wenn TO_EMAIL nicht gesetzt ist",
     withEnv(
       {
-        SMTP_PASS: "secret",
+        RESEND_API_KEY: "re_test",
         TO_EMAIL: undefined,
         FROM_EMAIL: "from@example.com",
       },
       async () => {
-        const t = fakeTransporter();
-        await sendFeedbackNotification({ type: "bug", description: "Test" }, t);
+        const f = fakeFetch();
+        await sendFeedbackNotification({ type: "bug", description: "Test" }, f);
         assert.equal(
-          t.getCaptured(),
+          f.getCaptured(),
           null,
-          "sendMail darf nicht aufgerufen werden",
+          "fetch darf nicht aufgerufen werden",
         );
       },
     ),
@@ -98,19 +85,18 @@ describe("sendFeedbackNotification", () => {
     "Subject enthält den Feedback-Typ als Label",
     withEnv(
       {
-        SMTP_PASS: "secret",
-        SMTP_USER: "from@gmail.com",
+        RESEND_API_KEY: "re_test",
         TO_EMAIL: "to@example.com",
-        FROM_EMAIL: "from@gmail.com",
+        FROM_EMAIL: "from@dev2k.org",
       },
       async () => {
-        const t = fakeTransporter();
+        const f = fakeFetch();
         await sendFeedbackNotification(
           { type: "improvement", description: "Dark Mode wäre schön." },
-          t,
+          f,
         );
-        assert.ok(t.getCaptured(), "sendMail muss aufgerufen worden sein");
-        assert.match(t.getCaptured().subject, /Verbesserungsvorschlag/);
+        assert.ok(f.getCaptured(), "fetch muss aufgerufen worden sein");
+        assert.match(f.getCaptured().body.subject, /Verbesserungsvorschlag/);
       },
     ),
   );
@@ -119,22 +105,21 @@ describe("sendFeedbackNotification", () => {
     "E-Mail des Nutzers erscheint im Text wenn angegeben",
     withEnv(
       {
-        SMTP_PASS: "secret",
-        SMTP_USER: "from@gmail.com",
+        RESEND_API_KEY: "re_test",
         TO_EMAIL: "to@example.com",
-        FROM_EMAIL: "from@gmail.com",
+        FROM_EMAIL: "from@dev2k.org",
       },
       async () => {
-        const t = fakeTransporter();
+        const f = fakeFetch();
         await sendFeedbackNotification(
           {
             type: "bug",
             description: "Login crasht.",
             email: "nutzer@example.com",
           },
-          t,
+          f,
         );
-        assert.ok(t.getCaptured()?.text.includes("nutzer@example.com"));
+        assert.ok(f.getCaptured()?.body.text.includes("nutzer@example.com"));
       },
     ),
   );
@@ -143,18 +128,36 @@ describe("sendFeedbackNotification", () => {
     "kein Absender-Feld im Text wenn keine Nutzer-Email angegeben",
     withEnv(
       {
-        SMTP_PASS: "secret",
-        SMTP_USER: "from@gmail.com",
+        RESEND_API_KEY: "re_test",
         TO_EMAIL: "to@example.com",
-        FROM_EMAIL: "from@gmail.com",
+        FROM_EMAIL: "from@dev2k.org",
       },
       async () => {
-        const t = fakeTransporter();
+        const f = fakeFetch();
         await sendFeedbackNotification(
           { type: "other", description: "Sonstiges." },
-          t,
+          f,
         );
-        assert.ok(!t.getCaptured()?.text.includes("Antwort an:"));
+        assert.ok(!f.getCaptured()?.body.text.includes("Antwort an:"));
+      },
+    ),
+  );
+
+  it(
+    "wirft Fehler bei nicht-ok Response",
+    withEnv(
+      {
+        RESEND_API_KEY: "re_test",
+        TO_EMAIL: "to@example.com",
+        FROM_EMAIL: "from@dev2k.org",
+      },
+      async () => {
+        const f = fakeFetch(401);
+        await assert.rejects(
+          () =>
+            sendFeedbackNotification({ type: "bug", description: "Test" }, f),
+          /Resend API Fehler 401/,
+        );
       },
     ),
   );

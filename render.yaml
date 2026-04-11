@@ -32,20 +32,14 @@ services:
       - key: RATE_LIMIT_MAX
         value: 100
 
-      # ── Email-Notifications (Gmail SMTP) ─────────────────────────────────
-      # SMTP_HOST und SMTP_PORT sind nicht sensitiv → direkt als value.
-      # SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL sind Secrets →
-      # sync: false, Werte im Render Dashboard eintragen.
-      # Gmail App-Passwort: Google-Account → Sicherheit → App-Passwörter
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: 465
-      - key: SMTP_USER # z.B. kav.pbg@gmail.com
+      # ── Email-Notifications (Resend API) ─────────────────────────────────
+      # Resend läuft über HTTPS (Port 443) – funktioniert auf Render Free.
+      # RESEND_API_KEY: resend.com → API Keys → Create API Key
+      # FROM_EMAIL: verifizierte Absender-Domain nötig (z.B. feedback@dev2k.org)
+      # TO_EMAIL: Empfänger der Feedback-Notifications
+      - key: RESEND_API_KEY # Secret – im Render Dashboard eintragen
         sync: false
-      - key: SMTP_PASS # 16-stelliges Gmail App-Passwort
+      - key: FROM_EMAIL # z.B. feedback@dev2k.org
         sync: false
-      - key: FROM_EMAIL # Absender-Adresse (meist gleich wie SMTP_USER)
-        sync: false
-      - key: TO_EMAIL # Empfänger der Feedback-Notifications
+      - key: TO_EMAIL # Empfänger der Notifications
         sync: false
