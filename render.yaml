@@ -3,20 +3,49 @@ services:
     name: linkshort
     runtime: node
     plan: free
-    autoDeploy: true
+    autoDeploy: true # Deploy automatisch bei jedem Push auf main
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      # ── App ──────────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
         value: 22
+
+      # ── Auth ─────────────────────────────────────────────────────────────
+      # generateValue: Render erstellt beim ersten Deploy automatisch einen
+      # sicheren Zufallswert – kein manuelles Setzen nötig.
       - key: JWT_SECRET
         generateValue: true
+
+      # ── Datenbank (Neon) ──────────────────────────────────────────────────
+      # sync: false = Wert wird NICHT aus render.yaml gelesen.
+      # Muss manuell im Render Dashboard unter Environment eingetragen werden.
       - key: DATABASE_URL
         sync: false
+
+      # ── Logging & Rate-Limiting ───────────────────────────────────────────
       - key: LOG_LEVEL
         value: info
       - key: RATE_LIMIT_MAX
         value: 100
+
+      # ── Email-Notifications (Gmail SMTP) ─────────────────────────────────
+      # SMTP_HOST und SMTP_PORT sind nicht sensitiv → direkt als value.
+      # SMTP_USER, SMTP_PASS, FROM_EMAIL, TO_EMAIL sind Secrets →
+      # sync: false, Werte im Render Dashboard eintragen.
+      # Gmail App-Passwort: Google-Account → Sicherheit → App-Passwörter
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 465
+      - key: SMTP_USER # z.B. kav.pbg@gmail.com
+        sync: false
+      - key: SMTP_PASS # 16-stelliges Gmail App-Passwort
+        sync: false
+      - key: FROM_EMAIL # Absender-Adresse (meist gleich wie SMTP_USER)
+        sync: false
+      - key: TO_EMAIL # Empfänger der Feedback-Notifications
+        sync: false
