@@ -19,6 +19,7 @@ import {
 } from "./src/routes/analytics.js";
 import { handleAuth } from "./src/routes/auth.js";
 import { handleDashboard } from "./src/routes/dashboard.js";
+import { handleFeedback } from "./src/routes/feedback.js";
 import { handleLinks } from "./src/routes/links.js";
 import { handleRedirect } from "./src/routes/redirect.js";
 import { getStats } from "./src/services/analytics-service.js";
@@ -250,6 +251,9 @@ const routeApi = async (req, res, method, path) => {
   // Allgemeines Rate-Limit
   if (!isAllowed(ip, "general", LIMITS.general))
     return sendTooManyRequests(res);
+
+  if (method === "POST" && path === "/api/feedback")
+    return await handleFeedback(req, res);
 
   // Links: GET mit optionalem Token (eingeloggte User sehen eigene Links)
   if (method === "GET" && path === "/api/links") {
