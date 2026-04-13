@@ -17,6 +17,10 @@ A minimal URL shortener built with Node.js and PostgreSQL. Create short links, t
 - Automated PR review via GitHub Actions + Claude API
 - Feedback widget on all pages (no auth required), with email notification via Resend
 
+## Planned
+
+- Redis caching for redirect endpoints (Cache-Aside pattern, TTL-based, fallback to DB)
+
 ## Installation
 
 ```bash
