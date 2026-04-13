@@ -41,6 +41,11 @@ const send = (res, status, data) => {
  */
 const handleGet = async (res, userId) => {
   const result = await getAllLinks(userId);
+  if (!result.success)
+    return send(res, ERROR_STATUS[result.error.code] ?? 500, {
+      error: result.error.code,
+      message: result.error.message,
+    });
   return send(res, 200, result.data);
 };
 
@@ -123,10 +128,13 @@ const handleToggle = async (res, code, userId) => {
 export const handleLinks = async (req, res, params) => {
   if (req.method === "GET") return handleGet(res, req.user?.id);
   if (req.method === "POST") return handlePost(req, res);
+  if (!req.user?.id) return send(res, 401, { error: "UNAUTHORIZED" });
   if (req.method === "DELETE")
     return handleDelete(res, params.code, req.user.id);
   if (req.method === "PUT")
     return handlePut(req, res, params.code, req.user.id);
   if (req.method === "PATCH")
     return handleToggle(res, params.code, req.user.id);
+  res.writeHead(405, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ error: "METHOD_NOT_ALLOWED" }));
 };

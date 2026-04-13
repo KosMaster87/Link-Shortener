@@ -222,11 +222,13 @@ const routeDashboard = async (req, res, method, path) => {
  * @returns {Promise<boolean>}
  */
 const checkAuth = (req, res) =>
-  new Promise((resolve) => {
-    requireAuth(req, res, () => resolve(true));
-    // requireAuth ruft next() nur bei Erfolg — bei 401 endet die Response
-    // ohne next()-Aufruf, daher Promise hängt nicht: res.end() schließt die Verbindung.
-    res.on("finish", () => resolve(false));
+  new Promise((resolve, reject) => {
+    try {
+      requireAuth(req, res, () => resolve(true));
+      res.on("finish", () => resolve(false));
+    } catch (err) {
+      reject(err);
+    }
   });
 
 /**
