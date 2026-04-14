@@ -20,15 +20,68 @@
 - **Frontend:** Statisches HTML + CSS + Vanilla JS
 - **Testing:** node:test + node:assert
 
+## Commands
+
+```bash
+npm start            # Server starten (port 3000, lädt .env automatisch)
+npm run preview      # Production-Modus lokal (NODE_ENV=production)
+npm test             # Alle Tests (node:test, concurrency=1, echte DB)
+npm run lint         # ESLint über gesamtes Projekt
+```
+
+Einzelne Test-Suites:
+
+```bash
+node --env-file-if-exists=.env --test tests/link-service.test.js
+node --env-file-if-exists=.env --test tests/analytics-service.test.js
+```
+
+Scripts (benötigen `.env` mit `ANTHROPIC_API_KEY`):
+
+```bash
+node --env-file-if-exists=.env bin/describe-url.js <url>
+node --env-file-if-exists=.env scripts/batch-describe.js
+```
+
 ## Projektstruktur
 
-- `server.js` — HTTP Server Entry Point
-- `src/routes/` — Route Handler (HTTP-Schicht)
-- `src/services/` — Business Logic
-- `src/db/` — Schema + pg Pool Setup
-- `src/utils/` — Helper (result.js: ok/err)
-- `public/` — Statische Dateien
-- `tests/` — Tests
+```
+server.js                    HTTP-Server, Routing, Security-Headers, Rate-Limit-Guard
+src/
+  config.js                  Alle Env-Variablen zentral — nie process.env direkt lesen
+  db/
+    index.js                 pg Pool (nutzt config.database.*)
+    schema.sql               Basis-Schema: short_links, link_clicks
+    migrations/
+      002_add_users.sql      users-Tabelle + user_id FK auf short_links
+      003_add_description.sql
+      004_add_feedback.sql
+  middleware/
+    auth.js                  requireAuth (401 bei fehlendem Token) / optionalAuth
+  routes/                    Nur HTTP — kein Business Logic, kein direkter DB-Zugriff
+    links.js                 CRUD für Short-Links (GET/POST/PUT/DELETE/PATCH)
+    redirect.js              /:code → 302 + fire-and-forget Click-Tracking
+    analytics.js             /api/links/:code/clicks|referrers|devices|period
+    auth.js                  POST /api/auth/register|login → JWT
+    dashboard.js             GET /api/dashboard/* (Auth required)
+    feedback.js              POST /api/feedback (Ausnahme: macht DB direkt — Tech Debt)
+  services/                  Business Logic — kein HTTP, keine req/res
+    link-service.js          createLink, getLink, getAllLinks, deleteLink, updateLink, toggleActive
+    analytics-service.js     trackClick, getStats, getClicksByPeriod, getReferrers, getDeviceStats
+    dashboard-service.js     getOverviewStats, getTopLinks, getClicksPerDay, getReferrerBreakdown
+    auth-service.js          register, login (scrypt, timing-safe)
+    email-service.js         sendFeedbackNotification → Resend REST API (fetch, kein nodemailer)
+  utils/
+    result.js                ok(data) / err(input) — einziges erlaubtes Result-Pattern
+    jwt.js                   createToken / verifyToken (HMAC-SHA256, node:crypto)
+    rate-limit.js            Sliding Window In-Memory, Buckets: general/createLink/login
+    validators.js            isValidUrl, validateAlias, validateLimit, validateDays, validatePeriod
+    device-classifier.js     classifyDevice (WARNUNG: exportiert aber nie importiert — Dead Code)
+public/                      Statisches Frontend (HTML/CSS/Vanilla JS), serviert via serveStatic
+tests/                       Echte PostgreSQL-DB, kein Mocking
+bin/                         CLI-Scripts (describe-url.js via Claude Haiku)
+scripts/                     Batch-Jobs (batch-describe.js, pr-review.js)
+```
 
 ## Datenbank
 
@@ -94,9 +147,9 @@
 
 - Click-Tracking liegt in `link_clicks`: `id`, `code`, `clicked_at`, `referrer`, `user_agent`, `ip_hash`, `is_bot`
 - Bestehende Aggregation pro Link liegt in `src/services/analytics-service.js` (`getStats`, `queryTotalClicks`, `queryClicksByDay`, `queryReferrers`, `queryUniqueVisitors`)
-- Device-Stats fehlen trotz gespeichertem `user_agent` (Desktop/Mobile/Tablet aktuell nicht aggregiert)
+- Device-Stats implementiert via SQL CTE + CASE/WHEN in `queryDeviceStats` — kein In-Memory-Scan
 - Für neue Analytics-Features bestehende Queries erweitern statt parallel neue Logik aufzubauen
-- Dashboard-Routes auf Auth-Guard prüfen (Sicherheitsrisiko, falls ungeschützt)
+- Dashboard-Routes sind mit `requireAuth` geschützt (`server.js` checkAuth-Guard)
 
 ## Dashboard-Queries - Bekannte Risiken
 
@@ -222,6 +275,114 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Oversized Body liefert `413`
 - Rate-Limit liefert `429`
 - Redirect- und Service-Tests grün (`npm run test`)
+
+## Bekannte Bugs
+
+### P0 — Inaktive Links werden weitergeleitet (nicht gefixed)
+
+**Dateien:** `src/services/link-service.js:107`, `src/routes/redirect.js:42`
+
+`getLink()` filtert nicht nach `is_active`. Ein via Toggle deaktivierter Link leitet weiterhin weiter.
+
+```js
+// link-service.js — fehlender Filter:
+"SELECT * FROM short_links WHERE code = $1";
+// korrekt wäre:
+"SELECT * FROM short_links WHERE code = $1 AND is_active = TRUE";
+
+// redirect.js — fehlender Guard nach getLink():
+// if (!result.data.isActive) return send(res, 404, { error: "NOT_FOUND" });
+```
+
+**Auswirkung:** Das Toggle-Feature (PATCH `/api/links/:code/toggle`) hat keine Wirkung auf Redirects.
+**Testlücke:** `tests/e2e-redirect.test.js` testet keinen inaktiven Link.
+
+## Dead Code & Phantom Dependencies
+
+### `nodemailer` — installiert, nie benutzt
+
+`package.json` listet `nodemailer: ^8.0.5` als Production-Dependency.
+`email-service.js` nutzt stattdessen native `fetch()` direkt gegen die Resend REST API.
+Kein einziger Import von `nodemailer` in der Codebase.
+
+```bash
+npm uninstall nodemailer  # ~3 MB entfernen, unnötiger Security-Surface
+```
+
+### `classifyDevice` — exportiert, nie importiert
+
+**Datei:** `src/utils/device-classifier.js:29`
+
+`export const classifyDevice` wird nirgends importiert. `analytics-service.js` repliziert die
+Patterns direkt in SQL (`TABLET_LIKE`/`MOBILE_LIKE` Arrays in `queryDeviceStats`). Beide
+Implementierungen müssen manuell synchron gehalten werden — `analytics-service.js:291` warnt bereits
+davor. Entweder die Funktion nutzen oder die Datei entfernen.
+
+### Tote Config-Properties
+
+**Datei:** `src/config.js`
+
+| Property                    | Env-Variable     | Problem                                                                    |
+| --------------------------- | ---------------- | -------------------------------------------------------------------------- |
+| `config.rateLimit.max`      | `RATE_LIMIT_MAX` | `rate-limit.js` hat hartcodierte `LIMITS` — Env-Variable hat keine Wirkung |
+| `config.logging.level`      | `LOG_LEVEL`      | Kein Logger liest diesen Wert                                              |
+| `config.auth.sessionExpiry` | `SESSION_EXPIRY` | `jwt.js` hardcodet `TOKEN_TTL_SEC = 86400` — Env-Variable wird ignoriert   |
+
+Ops setzt diese Variablen ohne jede Wirkung. Entweder verdrahten oder aus Config + `.env.example` entfernen.
+
+### `requireEnv` / `optionalEnv` — unnötig exportiert
+
+**Datei:** `src/config.js:12,28`
+
+Beide Funktionen werden nur intern in `config.js` verwendet. Kein externer Import in der gesamten
+Codebase. Export entfernen oder als interne Helpers belassen.
+
+## Fehlende Test-Coverage
+
+| Modul                            | Priorität | Was fehlt                                                               |
+| -------------------------------- | --------- | ----------------------------------------------------------------------- |
+| `src/middleware/auth.js`         | Hoch      | `requireAuth` 401-Pfad, Token-Expiry, Manipulation des Payloads         |
+| `src/utils/jwt.js`               | Hoch      | `verifyToken` mit abgelaufenem Token, falscher Signatur                 |
+| `src/routes/redirect.js`         | Hoch      | Inaktiver Link → 404 (deckt P0-Bug ab)                                  |
+| `src/utils/rate-limit.js`        | Mittel    | Sliding-Window-Korrektheit, Bucket-Isolation                            |
+| `src/utils/validators.js`        | Mittel    | `validateAlias` mit reservierten Slugs, `isValidUrl` mit internen Hosts |
+| `src/routes/links.js`            | Mittel    | HTTP-Layer: 405 METHOD_NOT_ALLOWED, 403 Ownership                       |
+| `src/utils/device-classifier.js` | Niedrig   | Tablet-vor-Mobile-Priorität (Android-Tablet-Edge-Case)                  |
+| `src/utils/result.js`            | Niedrig   | `err()` Normalisierung: String / `{code}` / `{kein code}`               |
+
+## Inkonsistente Patterns
+
+### `send()` — 6-fach identisch dupliziert
+
+```js
+// Identisch in: analytics.js:28, auth.js:24, dashboard.js:26,
+//               feedback.js:21, links.js:31, redirect.js:18
+const send = (res, status, data) => {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+};
+```
+
+Kandidat für `src/utils/http.js` — aber erst extrahieren wenn ein vierter Kontext entsteht.
+
+### `sendResult()` — nur in 2 von 6 Routes
+
+`analytics.js` und `dashboard.js` haben `sendResult()` mit `INTERNAL_CODES`-Filterung
+(DB-Fehler ohne `message` nach außen). `links.js` und `auth.js` bauen dasselbe inline —
+und leiten `message` bei DB-Fehlern durch. Das ist ein Security-Unterschied, kein Style-Unterschied.
+
+### `feedback.js` — bricht Projektkonventionen
+
+Das einzige Modul das `pool` direkt im Route-Handler importiert und nutzt:
+
+```
+❌ Route importiert pool direkt (Konvention: nur Services dürfen DB nutzen)
+❌ Roher pg-Fehlercode 42P01 statt err()-Pattern
+❌ Kein ERROR_STATUS-Mapping
+❌ Kein INTERNAL_CODES-Filter für message
+```
+
+Business-Logik und DB-Zugriff gehören in einen `feedback-service.js`.
 
 ## CI/CD Pipeline
 
