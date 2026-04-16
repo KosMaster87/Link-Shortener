@@ -1,8 +1,25 @@
 # LinkShort
 
-A minimal URL shortener built with Node.js and PostgreSQL. Create short links, track clicks, and view analytics in a dashboard.
+[![CI](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml)
+![Node.js](https://img.shields.io/badge/Node.js-22-green)
 
 **Live:** https://link-shortener.dev2k.org
+
+## Was es macht
+
+Ein URL-Shortener mit Analytics-Dashboard und Feedback-Widget.
+Nutzer kürzen lange URLs, sehen Klick-Statistiken pro Link (letzte 7/30 Tage)
+und können direkt im Interface Feedback senden.
+
+**Tech-Stack:** Node.js (natives `node:http`) · PostgreSQL · Vanilla JS · Hosting: Render · CI/CD: GitHub Actions
+
+## Entwicklungsansatz
+
+- **Strukturierte KI-Prompts** mit Kontext und Constraints — Code bleibt konsistent mit dem gewählten Stack, kein Blind-Trust in generierte Ausgaben
+- **TDD** (Tests vor der Implementierung) — Regressions in Production mehrfach verhindert, Coverage als Qualitätssignal nicht als Pflicht
+- **Dependency Injection** für alle externen Services — vollständig ohne echten Netzwerkzugriff testbar
+
+> KI-gestützt entwickelt mit Claude Code — mit Review-Mindset, nicht als Shortcut
 
 ## Features
 
@@ -69,8 +86,8 @@ PGUSER=your-local-pg-user
 PGPASSWORD=
 USE_DATABASE_URL=false
 
-# Required
-JWT_SECRET=replace-with-a-long-random-string
+# Required — generieren: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+JWT_SECRET=
 SESSION_EXPIRY=86400
 
 # Email notifications (optional — skip to disable)
@@ -78,8 +95,8 @@ RESEND_API_KEY=
 FROM_EMAIL=
 TO_EMAIL=
 
-# Optional
-ANTHROPIC_API_KEY=sk-ant-...
+# Optional — benötigt für scripts/batch-describe.js und PR-Review-Workflow
+ANTHROPIC_API_KEY=
 LOG_LEVEL=info
 RATE_LIMIT_MAX=100
 ```
