@@ -5,12 +5,13 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "node:fs";
-import { config } from "../src/config.js";
+
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim() || "";
 
 const INPUT_DIFF_FILE = "pr_diff.txt";
 const OUTPUT_REVIEW_FILE = "review_output.md";
 const MAX_DIFF_CHARS = 50_000;
-const MODEL = "claude-sonnet-4-6-20250514";
+const MODEL = "claude-sonnet-4-5";
 const MARKER = "<!-- pr-review-bot -->";
 
 const SYSTEM_PROMPT = `Du bist Code-Reviewer für LinkShort (node:http, pg, Plain JavaScript).
@@ -80,13 +81,13 @@ if (!rawDiff.trim()) {
   process.exit(0);
 }
 
-if (!config.anthropic.apiKey) {
+if (!ANTHROPIC_API_KEY) {
   writeReview("Review übersprungen: ANTHROPIC_API_KEY ist nicht gesetzt.");
   process.exit(0);
 }
 
 const { diff, wasTrimmed } = trimDiff(rawDiff);
-const client = new Anthropic({ apiKey: config.anthropic.apiKey });
+const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 try {
   const message = await client.messages.create({
