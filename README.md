@@ -110,7 +110,7 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 | -------- | ---------------- | ------------------------------------------------------------ |
 | Lokal    | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (Unix-Socket)               |
 | CI       | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (TCP, aus Workflow-Secrets) |
-| Render   | `true`           | `DATABASE_URL` (Render PostgreSQL / Managed PostgreSQL)      |
+| Render   | `true`           | `DATABASE_URL` (Neon PostgreSQL, gepoolte URL mit `-pooler`) |
 
 > **Hinweis:** Ist `DATABASE_URL` gesetzt und `USE_DATABASE_URL=false`, erscheint eine Warnung im Server-Log. Das ist kein Fehler — der Server nutzt trotzdem die lokale DB.
 
