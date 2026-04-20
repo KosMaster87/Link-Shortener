@@ -4,9 +4,11 @@
   "type": "module",
   "scripts": {
     "build": "echo \"No build step required for plain JavaScript\"",
+    "dev": "npm start",
     "preview": "NODE_ENV=production node --env-file-if-exists=.env server.js",
     "start": "node --env-file-if-exists=.env server.js",
-    "test": "node --env-file-if-exists=.env --test --test-concurrency=1",
+    "test": "node scripts/run-tests-with-server.js",
+    "test:raw": "node --env-file-if-exists=.env --test --test-concurrency=1",
     "test-link-service": "node --env-file-if-exists=.env --test tests/link-service.test.js",
     "test-analytics-service": "node --env-file-if-exists=.env --test tests/analytics-service.test.js",
     "lint": "eslint .",

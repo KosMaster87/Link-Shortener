@@ -51,6 +51,12 @@ const useDbUrl = optionalEnv("USE_DATABASE_URL", "false") === "true";
  */
 const resolveDatabaseUrl = () => {
   const url = process.env.DATABASE_URL?.trim() || "";
+  if (useDbUrl && !url) {
+    throw new Error(
+      "USE_DATABASE_URL=true, aber DATABASE_URL fehlt. " +
+        "Setze DATABASE_URL als Secret in der Deploy-Umgebung.",
+    );
+  }
   if (!url) return "";
   if (!useDbUrl) {
     console.warn(
@@ -60,6 +66,18 @@ const resolveDatabaseUrl = () => {
     return "";
   }
   return url;
+};
+
+/**
+ * PGUSER ist nur Pflicht wenn NICHT über DATABASE_URL verbunden wird.
+ * Das hält Production (Neon/Render) und lokale Entwicklung getrennt.
+ * @returns {string}
+ */
+const resolveDatabaseUser = () => {
+  if (useDbUrl) {
+    return process.env.PGUSER?.trim() || "";
+  }
+  return requireEnv("PGUSER");
 };
 
 export const config = {
@@ -89,7 +107,7 @@ export const config = {
     host: optionalEnv("PGHOST", "/var/run/postgresql"),
     port: process.env.PGPORT?.trim() || "",
     database: optionalEnv("PGDATABASE", "linkshort"),
-    user: requireEnv("PGUSER"),
+    user: resolveDatabaseUser(),
     password: process.env.PGPASSWORD?.trim() || "",
   },
 };

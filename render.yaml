@@ -25,6 +25,8 @@ services:
       # Muss manuell im Render Dashboard unter Environment eingetragen werden.
       - key: DATABASE_URL
         sync: false
+      - key: USE_DATABASE_URL
+        value: true
 
       # ── Logging & Rate-Limiting ───────────────────────────────────────────
       - key: LOG_LEVEL
