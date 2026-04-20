@@ -75,7 +75,7 @@ PORT=3000
 NODE_ENV=development
 
 # Option A (production)
-# DATABASE_URL=postgresql://user:pass@host:5432/linkshort
+# DATABASE_URL=postgresql://user:pass@ep-xxxx-pooler.eu-central-1.aws.neon.tech/linkshort?sslmode=require&channel_binding=require
 # USE_DATABASE_URL=true
 
 # Option B (local/alternative)
@@ -120,12 +120,30 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 USE_DATABASE_URL=true npm start
 ```
 
+### Render + Neon (Empfohlen)
+
+- In Render `DATABASE_URL` als Secret setzen (Neon Connection String)
+- In Render `USE_DATABASE_URL=true` setzen
+- Für Pooling den `-pooler` Host von Neon nutzen
+- Passwort bleibt identisch, nur der Hostname ändert sich
+
+Für die vollständige Umstellung inkl. Datenmigration siehe `NEON_MIGRATION_RUNBOOK.md`.
+
 `ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
 
 ## Testing
 
 ```bash
 npm test
+```
+
+`npm test` startet den lokalen Server bei Bedarf automatisch (Port 3000),
+fuehrt die komplette Suite aus und beendet den Server danach wieder.
+
+Falls du die Suite ohne diesen Helper direkt laufen lassen willst:
+
+```bash
+npm run test:raw
 ```
 
 Requires a running PostgreSQL instance with the `linkshort` database.

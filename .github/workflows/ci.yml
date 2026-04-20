@@ -74,34 +74,58 @@ jobs:
           PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/004_add_feedback.sql
 
       - name: Run tests with app server
+        run: npm test
+
+  coverage-soft-gate:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ${{ secrets.CI_POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.CI_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 55432
+      PGDATABASE: ${{ secrets.CI_POSTGRES_DB }}
+      PGUSER: ${{ secrets.CI_POSTGRES_USER }}
+      PGPASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+      JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Prepare database schema
         run: |
-          set -euo pipefail
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/schema.sql
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/002_add_users.sql
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/003_add_description.sql
+          PGPASSWORD="$PGPASSWORD" psql -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE" -f src/db/migrations/004_add_feedback.sql
 
-          cleanup() {
-            if [ -n "${SERVER_PID:-}" ]; then
-              kill "$SERVER_PID" || true
-            fi
-          }
-          trap cleanup EXIT
+      - name: Run coverage
+        run: node --env-file-if-exists=.env --test --experimental-test-coverage --test-concurrency=1 2>&1 | tee /tmp/coverage.txt; true
 
-          npm start > /tmp/server.log 2>&1 &
-          SERVER_PID=$!
-
-          for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:3000/ > /dev/null; then
-              echo "Server is up"
-              break
-            fi
-            sleep 1
-          done
-
-          if ! curl -fsS http://127.0.0.1:3000/ > /dev/null; then
-            echo "Server failed to start in time"
-            cat /tmp/server.log
-            exit 1
-          fi
-
-          if ! npm test; then
-            cat /tmp/server.log
-            exit 1
-          fi
+      - name: Show coverage summary
+        run: grep -E "^(all files|src/)" /tmp/coverage.txt || cat /tmp/coverage.txt | tail -20
