@@ -11,7 +11,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim() || "";
 const INPUT_DIFF_FILE = "pr_diff.txt";
 const OUTPUT_REVIEW_FILE = "review_output.md";
 const MAX_DIFF_CHARS = 50_000;
-const MODEL = "claude-sonnet-4-6-20250514";
+const MODEL = "claude-sonnet-4-5";
 const MARKER = "<!-- pr-review-bot -->";
 
 const SYSTEM_PROMPT = `Du bist Code-Reviewer für LinkShort (node:http, pg, Plain JavaScript).
