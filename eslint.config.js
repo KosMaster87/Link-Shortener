@@ -1,7 +1,7 @@
 // eslint.config.js (ESLint Flat Config)
 export default [
   {
-    ignores: ["docs/**"],
+    ignores: ["docs-site/**"],
   },
   {
     files: ["**/*.js"],

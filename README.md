@@ -129,6 +129,20 @@ USE_DATABASE_URL=true npm start
 
 Für die vollständige Umstellung inkl. Datenmigration siehe `NEON_MIGRATION_RUNBOOK.md`.
 
+### Incident Quickcheck (3 Min)
+
+1. Beide Health-URLs prüfen: `/health` auf `onrender.com` und `dev2k.org` müssen `200` liefern.
+2. Render-Logs prüfen: bei DB-Fehlern (`database removed`, `connection terminated`) sofort Incident notieren.
+3. Render-Environment prüfen: `DATABASE_URL` gesetzt und `USE_DATABASE_URL=true`.
+4. Neon prüfen: aktiver Endpoint/Branch, Compute startbar, Connection-String unverändert.
+5. Nach Fix verifizieren: beide Monitore wieder grün, sonst Manual Redeploy auslösen.
+
+One-liner (beide Health-Checks, mit PASS/FAIL + Exit-Code):
+
+```bash
+ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shortener.dev2k.org/health; do c=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$u") || c=000; printf "\n== %s ==\nHTTP %s\n" "$u" "$c"; cat /tmp/health.out; echo; [[ "$c" == "200" ]] || ok=0; done; [[ $ok -eq 1 ]] && echo "ALL HEALTH CHECKS PASS" || { echo "HEALTH CHECK FAILED"; exit 1; }
+```
+
 `ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
 
 ## Testing
@@ -147,6 +161,22 @@ npm run test:raw
 ```
 
 Requires a running PostgreSQL instance with the `linkshort` database.
+
+## Documentation
+
+- Manuelle Projektdokumentation: `docs/manual/`
+- Docusaurus + API-Referenz (TypeDoc aus JSDoc-Kommentaren): `docs-site/`
+
+```bash
+# Doku lokal entwickeln
+npm run docs:dev
+
+# Doku-Build erstellen
+npm run docs:build
+
+# Gebaute Doku lokal ausliefern
+npm run docs:serve
+```
 
 ## API
 
@@ -222,6 +252,17 @@ link-shortener/
 │   └── workflows/
 │       ├── ci.yml
 │       └── pr-review.yml
+├── docs/
+│   └── manual/
+│       ├── architecture/
+│       ├── decisions/
+│       ├── how-to/
+│       └── runbooks/
+├── docs-site/
+│   ├── docusaurus.config.js
+│   ├── docs/
+│   │   └── api/                 # generiert via TypeDoc
+│   └── build/                   # generierter Static Build
 ├── src/
 │   ├── config.js
 │   ├── db/

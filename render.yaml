@@ -46,14 +46,13 @@ services:
       - key: TO_EMAIL # Empfänger der Notifications
         sync: false
 
-  # ── Docusaurus Static Site ────────────────────────────────────────────────
-  # Deployment der JSDoc-API-Dokumentation als statische Seite auf Render.
-  # TypeDoc generiert die API-Docs aus den JSDoc-Kommentaren im src/-Ordner.
-  # Build läuft im docs/-Unterordner; TypeDoc liest via "../src/..." die
-  # Quelldateien aus dem Repo-Root.
+  # ── Docusaurus Documentation Site ────────────────────────────────────────
+  # Static documentation site with TypeDoc-generated API reference.
+  # TypeDoc reads JSDoc comments from src/ and generates structured API docs.
+  # Build runs from docs-site/ subdirectory; manual docs in ../docs/manual/.
   - type: static
     name: linkshort-docs
-    rootDir: docs
+    rootDir: docs-site
     buildCommand: npm ci && npm run build
     staticPublishPath: build
     pullRequestPreviewsEnabled: false

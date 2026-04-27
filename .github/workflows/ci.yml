@@ -129,3 +129,24 @@ jobs:
 
       - name: Show coverage summary
         run: grep -E "^(all files|src/)" /tmp/coverage.txt || cat /tmp/coverage.txt | tail -20
+
+  docs-site-build:
+    runs-on: ubuntu-latest
+    # Build and validate documentation site (TypeDoc-generated API docs + manual guides)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Install docs dependencies
+        run: npm --prefix docs-site ci
+
+      - name: Build documentation site
+        run: npm --prefix docs-site run build

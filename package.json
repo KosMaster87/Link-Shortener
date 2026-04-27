@@ -5,6 +5,9 @@
   "scripts": {
     "build": "echo \"No build step required for plain JavaScript\"",
     "dev": "npm start",
+    "docs:dev": "npm --prefix docs-site run start",
+    "docs:build": "npm --prefix docs-site run build",
+    "docs:serve": "npm --prefix docs-site run serve",
     "preview": "NODE_ENV=production node --env-file-if-exists=.env server.js",
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node scripts/run-tests-with-server.js",

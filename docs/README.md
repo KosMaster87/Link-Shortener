@@ -1,41 +1,27 @@
-# Website
+# Documentation Structure
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+Dieser Ordner enthält nur manuell geschriebene Projektdokumentation.
 
-## Installation
+## Ordner
 
-```bash
-yarn
-```
+- `manual/architecture/` - Architektur, Moduluebersichten, API-Flow
+- `manual/decisions/` - ADRs und technische Entscheidungen
+- `manual/how-to/` - Schritt-fuer-Schritt-Anleitungen
+- `manual/runbooks/` - Betrieb, Incident- und Deployment-Runbooks
 
-## Local Development
+## Trennung der Doku-Typen
 
-```bash
-yarn start
-```
+- Manuell gepflegte Doku: `docs/manual/`
+- Generierte API-Referenz und Docusaurus-Seite: `docs-site/`
+- Generierte API-Dateien: `docs-site/docs/api/` (nicht manuell bearbeiten)
+- Build-Ausgabe: `docs-site/build/` (nicht manuell bearbeiten)
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+## Befehle
 
-## Build
-
-```bash
-yarn build
-```
-
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
-
-## Deployment
-
-Using SSH:
+Vom Projekt-Root aus:
 
 ```bash
-USE_SSH=true yarn deploy
+npm run docs:dev
+npm run docs:build
+npm run docs:serve
 ```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
