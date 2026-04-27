@@ -4,6 +4,7 @@
  *   Verbindung läuft über Unix-Socket mit Peer-Authentifizierung.
  * @module src/db/index
  */
+
 import pg from "pg";
 import { config } from "../config.js";
 

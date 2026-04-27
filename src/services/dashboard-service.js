@@ -4,6 +4,7 @@
  *   und Referrer-Aufschlüsselung für das Admin-Dashboard.
  * @module src/services/dashboard-service
  */
+
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";
 import { validateDays, validateLimit } from "../utils/validators.js";

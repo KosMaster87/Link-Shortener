@@ -22,6 +22,7 @@ const TYPE_LABELS = {
  * @param {function} [_fetch] Optionaler fetch-Override (für Tests)
  * @returns {Promise<void>}
  */
+
 export const sendFeedbackNotification = async (
   { type, description, email },
   _fetch = undefined,

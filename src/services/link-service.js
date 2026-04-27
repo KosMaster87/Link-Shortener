@@ -4,6 +4,7 @@
  *   Generiert zufällige Slugs und validiert URLs.
  * @module src/services/link-service
  */
+
 import { randomBytes } from "node:crypto";
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";

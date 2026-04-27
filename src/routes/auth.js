@@ -4,6 +4,7 @@
  *   Gibt JWT-Token bei Erfolg zurück.
  * @module src/routes/auth
  */
+
 import { login, register } from "../services/auth-service.js";
 import { createToken } from "../utils/jwt.js";
 

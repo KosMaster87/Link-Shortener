@@ -4,6 +4,7 @@
  *   und dashboard-service verwendet, um Validierungslogik nicht zu duplizieren.
  * @module src/utils/validators
  */
+
 import { err, ok } from "./result.js";
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);

@@ -4,6 +4,7 @@
  *   /clicks-per-day und /referrer/:code.
  * @module src/routes/dashboard
  */
+
 import {
   getClicksPerDay,
   getOverviewStats,

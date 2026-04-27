@@ -3,6 +3,7 @@
  * @description Hashing via crypto.scrypt, UUIDs aus PostgreSQL gen_random_uuid().
  * @module src/services/auth-service
  */
+
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { pool } from "../db/index.js";

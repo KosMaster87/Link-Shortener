@@ -4,6 +4,7 @@
  *   zeichnet den Klick fire-and-forget auf und sendet einen 302-Redirect.
  * @module src/routes/redirect
  */
+
 import { trackClick } from "../services/analytics-service.js";
 import { getLink } from "../services/link-service.js";
 

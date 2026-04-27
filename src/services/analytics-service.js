@@ -4,6 +4,7 @@
  *   Bot-Traffic wird herausgefiltert. IPs werden vor der Speicherung gehasht.
  * @module src/services/analytics-service
  */
+
 import { createHash } from "node:crypto";
 import { pool } from "../db/index.js";
 import { err, ok } from "../utils/result.js";

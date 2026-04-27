@@ -4,6 +4,7 @@
  *   GET /api/links/:code/clicks/period?period=day|week|month.
  * @module src/routes/analytics
  */
+
 import {
   getClicksByPeriod,
   getDeviceStats,

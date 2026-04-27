@@ -4,6 +4,7 @@
  *   DELETE/PUT/PATCH /api/links/:code. Schreibrouten erfordern Auth + Ownership.
  * @module src/routes/links
  */
+
 import {
   createLink,
   deleteLink,

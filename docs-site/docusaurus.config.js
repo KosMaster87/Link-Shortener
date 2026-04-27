@@ -55,6 +55,7 @@ const config = {
           "../src/utils/validators.js",
         ],
         tsconfig: "../jsconfig.json",
+        disableSources: true,
         out: "docs/api",
       },
     ],

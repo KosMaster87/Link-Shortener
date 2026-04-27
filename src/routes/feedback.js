@@ -4,6 +4,7 @@
  *   Keine Auth erforderlich, damit auch nicht-eingeloggte Nutzer Feedback geben können.
  * @module src/routes/feedback
  */
+
 import { pool } from "../db/index.js";
 import { sendFeedbackNotification } from "../services/email-service.js";
 

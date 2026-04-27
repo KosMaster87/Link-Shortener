@@ -5,6 +5,7 @@
  *   Dateien aus dem public/-Verzeichnis.
  * @module server
  */
+
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname } from "node:path";

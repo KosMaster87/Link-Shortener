@@ -12,6 +12,7 @@
  * @param {*} data - Nutzdaten des Ergebnisses
  * @returns {{ success: true, data: * }}
  */
+
 export const ok = (data) => ({ success: true, data });
 
 /**

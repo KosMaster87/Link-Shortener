@@ -26,6 +26,7 @@ const MOBILE_PATTERNS = [
  * @param {string | null | undefined} userAgent
  * @returns {"mobile" | "tablet" | "desktop"}
  */
+
 export const classifyDevice = (userAgent) => {
   if (!userAgent) return "desktop";
   const lower = userAgent.toLowerCase();

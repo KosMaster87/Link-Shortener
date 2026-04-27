@@ -4,6 +4,7 @@
  *   Secret wird aus JWT_SECRET-Umgebungsvariable gelesen.
  * @module src/utils/jwt
  */
+
 import { createHmac } from "node:crypto";
 import { config } from "../config.js";
 

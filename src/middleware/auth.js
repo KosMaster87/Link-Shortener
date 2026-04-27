@@ -4,6 +4,7 @@
  *   und schreibt `req.user = { id, email }`. Gibt 401 bei fehlendem/ungültigem Token.
  * @module src/middleware/auth
  */
+
 import { verifyToken } from "../utils/jwt.js";
 
 /**
