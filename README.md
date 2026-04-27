@@ -162,6 +162,22 @@ npm run test:raw
 
 Requires a running PostgreSQL instance with the `linkshort` database.
 
+## Documentation
+
+- Manuelle Projektdokumentation: `docs/manual/`
+- Docusaurus + API-Referenz (TypeDoc aus JSDoc-Kommentaren): `docs-site/`
+
+```bash
+# Doku lokal entwickeln
+npm run docs:dev
+
+# Doku-Build erstellen
+npm run docs:build
+
+# Gebaute Doku lokal ausliefern
+npm run docs:serve
+```
+
 ## API
 
 ### Health
@@ -236,6 +252,17 @@ link-shortener/
 │   └── workflows/
 │       ├── ci.yml
 │       └── pr-review.yml
+├── docs/
+│   └── manual/
+│       ├── architecture/
+│       ├── decisions/
+│       ├── how-to/
+│       └── runbooks/
+├── docs-site/
+│   ├── docusaurus.config.js
+│   ├── docs/
+│   │   └── api/                 # generiert via TypeDoc
+│   └── build/                   # generierter Static Build
 ├── src/
 │   ├── config.js
 │   ├── db/
