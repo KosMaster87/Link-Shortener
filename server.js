@@ -71,6 +71,9 @@ const clientIp = (req) => {
 
 /**
  * Liefert einen kompakten Health-Status inkl. DB-Check.
+ * Gibt nur dann 200 zurueck, wenn App und Datenbank erreichbar sind.
+ * Bei DB-Fehlern wird bewusst 503 (Service Unavailable) gesendet,
+ * damit Monitoring/Platform-Healthchecks korrekt alarmieren.
  * @param {import("node:http").ServerResponse} res
  * @returns {Promise<void>}
  */
