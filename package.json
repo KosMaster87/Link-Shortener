@@ -18,15 +18,15 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
-    "nodemailer": "^8.0.5",
+    "@anthropic-ai/sdk": "^0.91.1",
+    "nodemailer": "^8.0.7",
     "pg": "^8.13.3"
   },
   "devDependencies": {
-    "eslint": "^10.1.0",
+    "eslint": "^10.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.3"
   },
   "lint-staged": {
     "*.js": [
