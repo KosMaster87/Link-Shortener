@@ -20,7 +20,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
     "nodemailer": "^8.0.7",
-    "pg": "^8.13.3"
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "eslint": "^10.2.1",
