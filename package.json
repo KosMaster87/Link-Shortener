@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^9.0.0",
     "pg": "^8.13.3"
   },
   "devDependencies": {
