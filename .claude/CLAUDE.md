@@ -458,7 +458,7 @@ Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
 
 ### Shared Commands
 
-Alle Custom Commands: @.claude/commands/INDEX.md
+Alle Custom Commands: @.claude/commands/_INDEX.md
 
 ### Drei Ebenen der Claude-Konfiguration
 
