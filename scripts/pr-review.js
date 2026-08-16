@@ -1,17 +1,17 @@
 /**
- * @fileoverview Erstellt ein automatisches PR-Review aus einem Git-Diff via Claude API.
+ * @fileoverview Erstellt ein automatisches PR-Review aus einem Git-Diff via OpenRouter.
  * @description Liest pr_diff.txt, begrenzt die Diff-Größe und schreibt das Ergebnis nach review_output.md.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim() || "";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY?.trim() || "";
 
 const INPUT_DIFF_FILE = "pr_diff.txt";
 const OUTPUT_REVIEW_FILE = "review_output.md";
 const MAX_DIFF_CHARS = 50_000;
-const MODEL = "claude-sonnet-4-5";
+const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 const MARKER = "<!-- pr-review-bot -->";
 
 const SYSTEM_PROMPT = `Du bist Code-Reviewer für LinkShort (node:http, pg, Plain JavaScript).
@@ -81,41 +81,55 @@ if (!rawDiff.trim()) {
   process.exit(0);
 }
 
-if (!ANTHROPIC_API_KEY) {
-  writeReview("Review übersprungen: ANTHROPIC_API_KEY ist nicht gesetzt.");
+if (!OPENROUTER_API_KEY) {
+  writeReview("Review übersprungen: OPENROUTER_API_KEY ist nicht gesetzt.");
   process.exit(0);
 }
 
 const { diff, wasTrimmed } = trimDiff(rawDiff);
-const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 try {
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 2000,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Bitte reviewe diesen Pull-Request-Diff:\n\n\`\`\`diff\n${diff}\n\`\`\``,
-      },
-    ],
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://link-shortener.dev2ksoftware.com",
+      "X-Title": "LinkShort",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 2000,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: `Bitte reviewe diesen Pull-Request-Diff:\n\n\`\`\`diff\n${diff}\n\`\`\``,
+        },
+      ],
+    }),
   });
 
+  if (!response.ok) {
+    throw new Error(
+      `OpenRouter API Fehler ${response.status}: ${await response.text()}`,
+    );
+  }
+
+  const data = await response.json();
   const text =
-    message.content?.[0]?.type === "text"
-      ? message.content[0].text
-      : "Kein Review-Text erzeugt.";
+    data.choices?.[0]?.message?.content ?? "Kein Review-Text erzeugt.";
   const trimNotice = wasTrimmed
     ? "\n\n_Hinweis: Der Diff wurde für das Review auf 50.000 Zeichen gekürzt._"
     : "";
 
+  const { prompt_tokens, completion_tokens } = data.usage ?? {};
   console.log(
-    `Tokens: ${message.usage.input_tokens} in, ${message.usage.output_tokens} out`,
+    `Tokens: ${prompt_tokens ?? "?"} in, ${completion_tokens ?? "?"} out (Modell: ${MODEL}, kostenlos)`,
   );
   writeReview(`${text}${trimNotice}`);
 } catch (error) {
-  console.error("Claude Review fehlgeschlagen:", error.message);
+  console.error("Review fehlgeschlagen:", error.message);
   writeReview(`Review fehlgeschlagen: ${error.message}`);
   process.exit(1);
 }

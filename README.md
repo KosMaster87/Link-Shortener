@@ -95,8 +95,8 @@ RESEND_API_KEY=
 FROM_EMAIL=
 TO_EMAIL=
 
-# Optional - benötigt für scripts/batch-describe.js und PR-Review-Workflow
-ANTHROPIC_API_KEY=
+# Optional - benötigt für bin/describe-url.js, scripts/batch-describe.js und PR-Review-Workflow
+OPENROUTER_API_KEY=
 LOG_LEVEL=info
 RATE_LIMIT_MAX=100
 ```
@@ -143,7 +143,7 @@ One-liner (beide Health-Checks, mit PASS/FAIL + Exit-Code):
 ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shortener.dev2ksoftware.com/health; do c=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$u") || c=000; printf "\n== %s ==\nHTTP %s\n" "$u" "$c"; cat /tmp/health.out; echo; [[ "$c" == "200" ]] || ok=0; done; [[ $ok -eq 1 ]] && echo "ALL HEALTH CHECKS PASS" || { echo "HEALTH CHECK FAILED"; exit 1; }
 ```
 
-`ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
+`OPENROUTER_API_KEY` is required for `bin/describe-url.js`, `scripts/batch-describe.js` and the automated PR review workflow.
 
 ## Testing
 
