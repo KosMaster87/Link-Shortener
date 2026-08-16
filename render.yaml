@@ -1,3 +1,10 @@
+# NOTE (16.08.2026): For an already-existing service (created before this
+# Blueprint existed, or edited manually since), Render does NOT auto-sync
+# buildCommand/startCommand from this file on every push - it only applies
+# on an explicit Blueprint sync/apply. The actual values live in the
+# service's own config (dashboard, or `PATCH /v1/services/{id}` with
+# `serviceDetails.envSpecificDetails.{buildCommand,startCommand}`). Keep
+# both in sync manually when changing either one.
 services:
   - type: web
     name: linkshort
