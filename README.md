@@ -3,15 +3,21 @@
 [![CI](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml)
 ![Node.js](https://img.shields.io/badge/Node.js-22-green)
 
-**Live:** https://link-shortener.dev2ksoftware.com
+Ein URL-Shortener mit Analytics-Dashboard und Feedback-Widget. Node.js (natives `node:http`),
+PostgreSQL, Vanilla JS.
 
-## Was es macht
+---
 
-Ein URL-Shortener mit Analytics-Dashboard und Feedback-Widget.
-Nutzer kürzen lange URLs, sehen Klick-Statistiken pro Link (letzte 7/30 Tage)
-und können direkt im Interface Feedback senden.
+## Live
 
-**Tech-Stack:** Node.js (natives `node:http`) · PostgreSQL · Vanilla JS · Hosting: Render · CI/CD: GitHub Actions
+| Environment | URL                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| **App**     | [link-shortener.dev2ksoftware.com](https://link-shortener.dev2ksoftware.com)               |
+| **Docs**    | [link-shortener-docu-saurus.onrender.com](https://link-shortener-docu-saurus.onrender.com) |
+
+Hosting: Render (Node-Service + Docusaurus-Static-Service) · DB: Neon PostgreSQL · CI/CD: GitHub Actions
+
+---
 
 ## Entwicklungsansatz
 
@@ -21,28 +27,28 @@ und können direkt im Interface Feedback senden.
 
 > KI-gestützt entwickelt mit Claude Code - mit Review-Mindset, nicht als Shortcut
 
-## Features
+---
+
+## Core Features
 
 - Create short links with optional custom slug
-- AI-generated short descriptions for stored URLs
+- AI-generated short descriptions for stored URLs (OpenRouter, kostenlose Modelle)
 - Click tracking with referrer, user-agent, and bot detection
 - Analytics API per link: period timeline, referrers, and device distribution
 - Dashboard: overview stats, clicks per day, top links, referrer breakdown (auth required)
 - JWT authentication (register/login)
 - Rate limiting per IP, security headers, input validation
 - Batch automation for missing descriptions
-- Automated PR review via GitHub Actions + Claude API
+- Automated PR review via GitHub Actions + OpenRouter
 - Feedback widget on all pages (no auth required), with email notification via Resend
 
-## Planned
+**Planned:** Redis caching for redirect endpoints (Cache-Aside pattern, TTL-based, fallback to DB)
 
-- Redis caching for redirect endpoints (Cache-Aside pattern, TTL-based, fallback to DB)
-
-## Installation
+## Quick Start / Local Development
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/KosMaster87/link-shortener.git && cd link-shortener
+git clone https://github.com/KosMaster87/Link-Shortener.git && cd Link-Shortener
 pnpm install
 
 # 2. Create PostgreSQL database
@@ -66,7 +72,7 @@ pnpm start
 
 Server runs on `http://localhost:3000`.
 
-## Configuration
+### Configuration
 
 Copy `.env.example` to `.env`:
 
@@ -101,7 +107,7 @@ LOG_LEVEL=info
 RATE_LIMIT_MAX=100
 ```
 
-### Lokale Entwicklung vs. Production DB
+#### Lokale Entwicklung vs. Production DB
 
 `DATABASE_URL` wird **nur genutzt wenn `USE_DATABASE_URL=true`** gesetzt ist.
 Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Variablen.
@@ -120,7 +126,7 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 USE_DATABASE_URL=true pnpm start
 ```
 
-### Render + Neon (Empfohlen)
+#### Render + Neon (Empfohlen)
 
 - In Render `DATABASE_URL` als Secret setzen (Neon Connection String)
 - In Render `USE_DATABASE_URL=true` setzen
@@ -129,7 +135,7 @@ USE_DATABASE_URL=true pnpm start
 
 Für die vollständige Umstellung inkl. Datenmigration siehe `NEON_MIGRATION_RUNBOOK.md`.
 
-### Incident Quickcheck (3 Min)
+#### Incident Quickcheck (3 Min)
 
 1. Beide Health-URLs prüfen: `/health` auf `onrender.com` und `dev2ksoftware.com` müssen `200` liefern.
 2. Render-Logs prüfen: bei DB-Fehlern (`database removed`, `connection terminated`) sofort Incident notieren.
@@ -145,7 +151,7 @@ ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shor
 
 `OPENROUTER_API_KEY` is required for `bin/describe-url.js`, `scripts/batch-describe.js` and the automated PR review workflow.
 
-## Testing
+### Testing
 
 ```bash
 pnpm test
@@ -162,81 +168,7 @@ pnpm run test:raw
 
 Requires a running PostgreSQL instance with the `linkshort` database.
 
-## Documentation
-
-- Manuelle Projektdokumentation: `docs/manual/`
-- Docusaurus + API-Referenz (TypeDoc aus JSDoc-Kommentaren): `docs-site/`
-
-```bash
-# Doku lokal entwickeln
-pnpm run docs:dev
-
-# Doku-Build erstellen
-pnpm run docs:build
-
-# Gebaute Doku lokal ausliefern
-pnpm run docs:serve
-```
-
-## API
-
-### Health
-
-| Method | Path    | Response                                           |
-| ------ | ------- | -------------------------------------------------- |
-| GET    | /health | `200 { status: "ok", ... }` or `503` on DB failure |
-
-### Auth
-
-| Method | Path               | Body                  | Response          |
-| ------ | ------------------ | --------------------- | ----------------- |
-| POST   | /api/auth/register | `{ email, password }` | `{ token, user }` |
-| POST   | /api/auth/login    | `{ email, password }` | `{ token, user }` |
-
-### Links
-
-All write operations require `Authorization: Bearer <token>`.
-
-| Method | Path                    | Body / Params    | Response                          |
-| ------ | ----------------------- | ---------------- | --------------------------------- |
-| GET    | /api/links              | -                | Array of links with `description` |
-| POST   | /api/links              | `{ url, slug? }` | Created link                      |
-| PUT    | /api/links/:code        | `{ url }`        | Updated link                      |
-| PATCH  | /api/links/:code/toggle | -                | Toggled link                      |
-| DELETE | /api/links/:code        | -                | 204 No Content                    |
-| GET    | /:code                  | -                | 302 Redirect                      |
-
-Each link object includes `code`, `originalUrl`, `description`, `createdAt`, `isActive`, and `userId`.
-
-### Dashboard
-
-All dashboard endpoints require `Authorization: Bearer <token>`.
-
-| Method | Path                          | Query Params  |
-| ------ | ----------------------------- | ------------- |
-| GET    | /api/dashboard/overview       | -             |
-| GET    | /api/dashboard/top-links      | limit (1-100) |
-| GET    | /api/dashboard/clicks-per-day | days (1-365)  |
-| GET    | /api/dashboard/referrer/:code | -             |
-
-### Feedback
-
-| Method | Path          | Body                            | Auth |
-| ------ | ------------- | ------------------------------- | ---- |
-| POST   | /api/feedback | `{ type, description, email? }` | none |
-
-`type`: `bug` \| `improvement` \| `other`. Returns `201 { message }` on success.
-
-### Analytics
-
-| Method | Path                           | Query Params              |
-| ------ | ------------------------------ | ------------------------- |
-| GET    | /api/links/:code/clicks        | -                         |
-| GET    | /api/links/:code/clicks/period | period (day\|week\|month) |
-| GET    | /api/links/:code/referrers     | -                         |
-| GET    | /api/links/:code/devices       | -                         |
-
-## Project Structure
+## Structure
 
 ```text
 link-shortener/
@@ -315,11 +247,89 @@ link-shortener/
 └── README.md
 ```
 
+## API
+
+### Health
+
+| Method | Path    | Response                                           |
+| ------ | ------- | -------------------------------------------------- |
+| GET    | /health | `200 { status: "ok", ... }` or `503` on DB failure |
+
+### Auth
+
+| Method | Path               | Body                  | Response          |
+| ------ | ------------------ | --------------------- | ----------------- |
+| POST   | /api/auth/register | `{ email, password }` | `{ token, user }` |
+| POST   | /api/auth/login    | `{ email, password }` | `{ token, user }` |
+
+### Links
+
+All write operations require `Authorization: Bearer <token>`.
+
+| Method | Path                    | Body / Params    | Response                          |
+| ------ | ----------------------- | ---------------- | --------------------------------- |
+| GET    | /api/links              | -                | Array of links with `description` |
+| POST   | /api/links              | `{ url, slug? }` | Created link                      |
+| PUT    | /api/links/:code        | `{ url }`        | Updated link                      |
+| PATCH  | /api/links/:code/toggle | -                | Toggled link                      |
+| DELETE | /api/links/:code        | -                | 204 No Content                    |
+| GET    | /:code                  | -                | 302 Redirect                      |
+
+Each link object includes `code`, `originalUrl`, `description`, `createdAt`, `isActive`, and `userId`.
+
+### Dashboard
+
+All dashboard endpoints require `Authorization: Bearer <token>`.
+
+| Method | Path                          | Query Params  |
+| ------ | ----------------------------- | ------------- |
+| GET    | /api/dashboard/overview       | -             |
+| GET    | /api/dashboard/top-links      | limit (1-100) |
+| GET    | /api/dashboard/clicks-per-day | days (1-365)  |
+| GET    | /api/dashboard/referrer/:code | -             |
+
+### Feedback
+
+| Method | Path          | Body                            | Auth |
+| ------ | ------------- | ------------------------------- | ---- |
+| POST   | /api/feedback | `{ type, description, email? }` | none |
+
+`type`: `bug` \| `improvement` \| `other`. Returns `201 { message }` on success.
+
+### Analytics
+
+| Method | Path                           | Query Params              |
+| ------ | ------------------------------ | ------------------------- |
+| GET    | /api/links/:code/clicks        | -                         |
+| GET    | /api/links/:code/clicks/period | period (day\|week\|month) |
+| GET    | /api/links/:code/referrers     | -                         |
+| GET    | /api/links/:code/devices       | -                         |
+
 ## Automation
 
 - `scripts/batch-describe.js` generates missing URL descriptions for rows where `description IS NULL`
-- `.github/workflows/pr-review.yml` runs an automated Claude-based PR review for internal pull requests
+- `.github/workflows/pr-review.yml` runs an automated OpenRouter-based PR review for internal pull requests
 - `scripts/pr-review.js` builds the review comment and updates the existing bot comment instead of posting duplicates
+
+## Documentation
+
+- Manuelle Projektdokumentation: `docs/manual/`
+- Docusaurus + API-Referenz (TypeDoc aus JSDoc-Kommentaren): `docs-site/`
+
+```bash
+# Doku lokal entwickeln
+pnpm run docs:dev
+
+# Doku-Build erstellen
+pnpm run docs:build
+
+# Gebaute Doku lokal ausliefern
+pnpm run docs:serve
+```
+
+## License
+
+No project license file is currently included.
 
 ## Developer
 
