@@ -93,8 +93,8 @@ export const config = {
       86400,
     ),
   },
-  anthropic: {
-    apiKey: optionalEnv("ANTHROPIC_API_KEY", ""),
+  openrouter: {
+    apiKey: optionalEnv("OPENROUTER_API_KEY", ""),
   },
   logging: {
     level: optionalEnv("LOG_LEVEL", "info"),
