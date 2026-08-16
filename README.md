@@ -3,7 +3,7 @@
 [![CI](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml)
 ![Node.js](https://img.shields.io/badge/Node.js-22-green)
 
-**Live:** https://link-shortener.dev2k.org
+**Live:** https://link-shortener.dev2ksoftware.com
 
 ## Was es macht
 
@@ -43,7 +43,7 @@ und können direkt im Interface Feedback senden.
 ```bash
 # 1. Clone & install
 git clone https://github.com/KosMaster87/link-shortener.git && cd link-shortener
-npm install
+pnpm install
 
 # 2. Create PostgreSQL database
 createdb linkshort
@@ -61,7 +61,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # Paste the output as JWT_SECRET in .env
 
 # 5. Start
-npm start
+pnpm start
 ```
 
 Server runs on `http://localhost:3000`.
@@ -117,7 +117,7 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 **Neon lokal testen** (bewusst, nicht Standard):
 
 ```bash
-USE_DATABASE_URL=true npm start
+USE_DATABASE_URL=true pnpm start
 ```
 
 ### Render + Neon (Empfohlen)
@@ -131,7 +131,7 @@ Für die vollständige Umstellung inkl. Datenmigration siehe `NEON_MIGRATION_RUN
 
 ### Incident Quickcheck (3 Min)
 
-1. Beide Health-URLs prüfen: `/health` auf `onrender.com` und `dev2k.org` müssen `200` liefern.
+1. Beide Health-URLs prüfen: `/health` auf `onrender.com` und `dev2ksoftware.com` müssen `200` liefern.
 2. Render-Logs prüfen: bei DB-Fehlern (`database removed`, `connection terminated`) sofort Incident notieren.
 3. Render-Environment prüfen: `DATABASE_URL` gesetzt und `USE_DATABASE_URL=true`.
 4. Neon prüfen: aktiver Endpoint/Branch, Compute startbar, Connection-String unverändert.
@@ -140,7 +140,7 @@ Für die vollständige Umstellung inkl. Datenmigration siehe `NEON_MIGRATION_RUN
 One-liner (beide Health-Checks, mit PASS/FAIL + Exit-Code):
 
 ```bash
-ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shortener.dev2k.org/health; do c=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$u") || c=000; printf "\n== %s ==\nHTTP %s\n" "$u" "$c"; cat /tmp/health.out; echo; [[ "$c" == "200" ]] || ok=0; done; [[ $ok -eq 1 ]] && echo "ALL HEALTH CHECKS PASS" || { echo "HEALTH CHECK FAILED"; exit 1; }
+ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shortener.dev2ksoftware.com/health; do c=$(curl -sS -o /tmp/health.out -w "%{http_code}" "$u") || c=000; printf "\n== %s ==\nHTTP %s\n" "$u" "$c"; cat /tmp/health.out; echo; [[ "$c" == "200" ]] || ok=0; done; [[ $ok -eq 1 ]] && echo "ALL HEALTH CHECKS PASS" || { echo "HEALTH CHECK FAILED"; exit 1; }
 ```
 
 `ANTHROPIC_API_KEY` is required for `scripts/batch-describe.js` and the automated PR review workflow.
@@ -148,16 +148,16 @@ ok=1; for u in https://link-shortener-h40z.onrender.com/health https://link-shor
 ## Testing
 
 ```bash
-npm test
+pnpm test
 ```
 
-`npm test` startet den lokalen Server bei Bedarf automatisch (Port 3000),
+`pnpm test` startet den lokalen Server bei Bedarf automatisch (Port 3000),
 fuehrt die komplette Suite aus und beendet den Server danach wieder.
 
 Falls du die Suite ohne diesen Helper direkt laufen lassen willst:
 
 ```bash
-npm run test:raw
+pnpm run test:raw
 ```
 
 Requires a running PostgreSQL instance with the `linkshort` database.
@@ -169,13 +169,13 @@ Requires a running PostgreSQL instance with the `linkshort` database.
 
 ```bash
 # Doku lokal entwickeln
-npm run docs:dev
+pnpm run docs:dev
 
 # Doku-Build erstellen
-npm run docs:build
+pnpm run docs:build
 
 # Gebaute Doku lokal ausliefern
-npm run docs:serve
+pnpm run docs:serve
 ```
 
 ## API
@@ -325,5 +325,5 @@ link-shortener/
 
 Konstantin Aksenov
 GitHub: https://github.com/KosMaster87
-Email: Konstantin.Aksenov@dev2k.org
-Portfolio: https://portfolio.dev2k.org
+Email: konstantin@dev2ksoftware.com
+Portfolio: https://portfolio.dev2ksoftware.com

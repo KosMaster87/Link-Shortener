@@ -2,9 +2,11 @@
   "name": "linkshort",
   "version": "1.0.0",
   "type": "module",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build": "echo \"No build step required for plain JavaScript\"",
-    "dev": "npm start",
+    "dev": "pnpm start",
     "docs:dev": "npm --prefix docs-site run start",
     "docs:build": "npm --prefix docs-site run build",
     "docs:serve": "npm --prefix docs-site run serve",

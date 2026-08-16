@@ -78,8 +78,8 @@ Die Datei `render.yaml` ist bereits vorbereitet.
 Nach Deploy prüfen:
 
 ```bash
-curl -sS https://link-shortener.dev2k.org/health
-curl -i https://link-shortener.dev2k.org/
+curl -sS https://link-shortener.dev2ksoftware.com/health
+curl -i https://link-shortener.dev2ksoftware.com/
 ```
 
 Danach App-Szenarien prüfen:

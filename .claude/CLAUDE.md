@@ -15,7 +15,7 @@
 
 ## Tech-Stack
 
-- **JS:** ES2024, ESM, Node.js 24 LTS, npm
+- **JS:** ES2024, ESM, Node.js 24 LTS, pnpm
 - **Backend:** node:http, pg (Raw SQL)
 - **Frontend:** Statisches HTML + CSS + Vanilla JS
 - **Testing:** node:test + node:assert
@@ -23,10 +23,10 @@
 ## Commands
 
 ```bash
-npm start            # Server starten (port 3000, lädt .env automatisch)
-npm run preview      # Production-Modus lokal (NODE_ENV=production)
-npm test             # Alle Tests (node:test, concurrency=1, echte DB)
-npm run lint         # ESLint über gesamtes Projekt
+pnpm start            # Server starten (port 3000, lädt .env automatisch)
+pnpm run preview      # Production-Modus lokal (NODE_ENV=production)
+pnpm test             # Alle Tests (node:test, concurrency=1, echte DB)
+pnpm run lint         # ESLint über gesamtes Projekt
 ```
 
 Einzelne Test-Suites:
@@ -88,7 +88,7 @@ scripts/                     Batch-Jobs (batch-describe.js, pr-review.js)
 - PostgreSQL, DB: `linkshort`
 - Unix-Socket `/var/run/postgresql` (peer-Auth, kein Passwort)
 - DB-User: `dev2k` (Superuser)
-- Starten: `npm start`
+- Starten: `pnpm start`
 
 ## Coding-Konventionen
 
@@ -266,7 +266,7 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 
 - Lokale Secrets liegen in `.env` im Projekt-Root und werden nicht committed
 - Commitbare Vorlage ist `.env.example`
-- npm-Skripte laden `.env` nativ via `node --env-file-if-exists=.env`
+- pnpm-Skripte laden `.env` nativ via `node --env-file-if-exists=.env`
 
 ### Security Verification (DoD)
 
@@ -274,7 +274,7 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Fremder User auf fremden Link liefert `403`
 - Oversized Body liefert `413`
 - Rate-Limit liefert `429`
-- Redirect- und Service-Tests grün (`npm run test`)
+- Redirect- und Service-Tests grün (`pnpm run test`)
 
 ## Bekannte Bugs
 
@@ -306,7 +306,7 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 Kein einziger Import von `nodemailer` in der Codebase.
 
 ```bash
-npm uninstall nodemailer  # ~3 MB entfernen, unnötiger Security-Surface
+pnpm remove nodemailer  # ~3 MB entfernen, unnötiger Security-Surface
 ```
 
 ### `classifyDevice` — exportiert, nie importiert
@@ -445,7 +445,7 @@ Nach jeder Dateiänderung durch Claude laufen folgende Checks automatisch:
 
 - Datenbankmigrationen
 - `git push` / Deployment
-- `npm run lint` für vollständigen Projekt-Lint außerhalb von Claude
+- `pnpm run lint` für vollständigen Projekt-Lint außerhalb von Claude
 
 ### Konfiguration
 
