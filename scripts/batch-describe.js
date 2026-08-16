@@ -1,15 +1,14 @@
 /**
  * @fileoverview Batch-Script: Erzeugt deutsche Kurzbeschreibungen für short_links ohne description.
- * @description Lädt alle Links mit description IS NULL, ruft Haiku pro URL auf,
- *   speichert die Beschreibung in der DB und gibt Token-Kosten aus.
+ * @description Lädt alle Links mit description IS NULL, ruft ein kostenloses OpenRouter-Modell
+ *   pro URL auf, speichert die Beschreibung in der DB und gibt die Token-Nutzung aus.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import pg from "pg";
 import { config } from "../src/config.js";
 
-const INPUT_COST_PER_M = 1.0;
-const OUTPUT_COST_PER_M = 5.0;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = "google/gemma-4-26b-a4b-it:free";
 const RATE_LIMIT_MS = 100;
 
 const SYSTEM_PROMPT =
@@ -30,14 +29,12 @@ const poolConfig = config.database.url
 
 const pool = new pg.Pool(poolConfig);
 
-if (!config.anthropic.apiKey) {
+if (!config.openrouter.apiKey) {
   console.error(
-    "ANTHROPIC_API_KEY fehlt. Batch-Beschreibung kann nicht gestartet werden.",
+    "OPENROUTER_API_KEY fehlt. Batch-Beschreibung kann nicht gestartet werden.",
   );
   process.exit(1);
 }
-
-const anthropic = new Anthropic({ apiKey: config.anthropic.apiKey });
 
 /**
  * Lädt alle short_links ohne Beschreibung.
@@ -64,32 +61,41 @@ const saveDescription = async (code, description) => {
 };
 
 /**
- * Ruft Haiku für eine URL auf und gibt Beschreibung + usage zurück.
+ * Ruft OpenRouter für eine URL auf und gibt Beschreibung + Token-Nutzung zurück.
  * @param {string} url
- * @returns {Promise<{description: string, usage: {input_tokens: number, output_tokens: number}}>}
+ * @returns {Promise<{description: string, usage: {prompt_tokens: number, completion_tokens: number}}>}
  */
 const generateDescription = async (url) => {
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 100,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: url }],
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.openrouter.apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://link-shortener.dev2ksoftware.com",
+      "X-Title": "LinkShort",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 100,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: url },
+      ],
+    }),
   });
+
+  if (!response.ok) {
+    throw new Error(
+      `OpenRouter API Fehler ${response.status}: ${await response.text()}`,
+    );
+  }
+
+  const data = await response.json();
   return {
-    description: response.content[0].text.trim(),
-    usage: response.usage,
+    description: data.choices?.[0]?.message?.content?.trim() ?? "",
+    usage: data.usage ?? { prompt_tokens: 0, completion_tokens: 0 },
   };
 };
-
-/**
- * Berechnet geschätzte Kosten in USD.
- * @param {number} inputTokens
- * @param {number} outputTokens
- * @returns {number}
- */
-const calcCost = (inputTokens, outputTokens) =>
-  (inputTokens / 1_000_000) * INPUT_COST_PER_M +
-  (outputTokens / 1_000_000) * OUTPUT_COST_PER_M;
 
 /**
  * Pausiert für die angegebene Zeit.
@@ -110,11 +116,7 @@ const processBatch = async () => {
     return;
   }
 
-  // Vorab-Schätzung: ~20 Input-Tokens pro URL, ~25 Output-Tokens
-  const estimatedInput = links.length * 20;
-  const estimatedOutput = links.length * 25;
-  const estimatedCost = calcCost(estimatedInput, estimatedOutput);
-  console.log(`Geschätzte Kosten: $${estimatedCost.toFixed(6)}\n`);
+  console.log(`Modell: ${MODEL} (kostenlos)\n`);
 
   let processed = 0;
   let failed = 0;
@@ -127,8 +129,8 @@ const processBatch = async () => {
         link.original_url,
       );
       await saveDescription(link.code, description);
-      totalInput += usage.input_tokens;
-      totalOutput += usage.output_tokens;
+      totalInput += usage.prompt_tokens ?? 0;
+      totalOutput += usage.completion_tokens ?? 0;
       processed++;
       console.log(`✓ ${link.original_url}\n  → ${description}`);
     } catch (error) {
@@ -138,14 +140,12 @@ const processBatch = async () => {
     await sleep(RATE_LIMIT_MS);
   }
 
-  const totalCost = calcCost(totalInput, totalOutput);
   console.log(`
 ── Zusammenfassung ──────────────────────
   Verarbeitet : ${processed}
   Fehler      : ${failed}
   Input-Tokens: ${totalInput}
   Output-Tokens: ${totalOutput}
-  Gesamtkosten: $${totalCost.toFixed(6)}
 ─────────────────────────────────────────`);
 };
 

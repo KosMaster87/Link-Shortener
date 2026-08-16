@@ -10,7 +10,7 @@ link-shortener/
 │   └── workflows/
 │       └── ci.yml                 # Lint + Tests mit Postgres-Service
 ├── bin/
-│   └── describe-url.js            # CLI-Helfer für URL-Beschreibungen via Anthropic
+│   └── describe-url.js            # CLI-Helfer für URL-Beschreibungen via OpenRouter
 ├── public/
 │   ├── index.html                 # Link-Erstellung
 │   ├── dashboard.html             # Dashboard-UI
@@ -380,7 +380,7 @@ Wichtige Beobachtung:
 - Analytics filtern Bots konsequent über `is_bot = FALSE` aus allen relevanten Auswertungen
 - IPs werden nicht im Klartext gespeichert, sondern vor Persistenz gehasht
 - Dashboard-Endpunkte sind der einzige klar geschützte Analysebereich für Gesamtmetriken
-- Das Projekt hat bereits die Dependencies für KI-gestützte Automatisierung (`@anthropic-ai/sdk`) und ein CLI-Helferskript in `bin/describe-url.js`, aber noch keinen produktiven Batch-Workflow unter `scripts/`
+- KI-gestützte Automatisierung läuft über OpenRouter (kostenlose Modelle, plain `fetch()`) statt einer SDK-Dependency — CLI-Helferskript `bin/describe-url.js` und Batch-Workflow `scripts/batch-describe.js`
 
 ---
 

@@ -36,7 +36,7 @@ node --env-file-if-exists=.env --test tests/link-service.test.js
 node --env-file-if-exists=.env --test tests/analytics-service.test.js
 ```
 
-Scripts (benötigen `.env` mit `ANTHROPIC_API_KEY`):
+Scripts (benötigen `.env` mit `OPENROUTER_API_KEY`):
 
 ```bash
 node --env-file-if-exists=.env bin/describe-url.js <url>
@@ -524,28 +524,30 @@ Regel: Team-Standards immer auf Projektebene, persönliche Präferenzen nur loka
 - Erst Dry-Run (`Zeig mir erst welche Dateien betroffen wären`), dann Execute
 - Bei Unsicherheit: erst eine Datei, dann Rest nach Bestätigung
 
-## Claude API – Konfiguration
+## OpenRouter API – Konfiguration
 
 ### Einsatzbereich
 
-- URL-Beschreibungen beim Kürzen: claude-haiku-4-5
-- Code-Reviews (automatisiert): claude-sonnet-4-6-20250514
-- Komplexe Analysen: claude-sonnet-4-6-20250514
+- URL-Beschreibungen beim Kürzen: google/gemma-4-26b-a4b-it:free
+- Code-Reviews (automatisiert): nvidia/nemotron-3-ultra-550b-a55b:free
+- Beide Modelle sind kostenlose OpenRouter-Modelle (`:free`-Suffix) — dieselben, die auch
+  über `aichat` (siehe `~/.config/aichat/config.yaml`) genutzt werden
 
 ### SDK
 
-@anthropic-ai/sdk – installiert als Dependency
+Keine SDK-Dependency — plain `fetch()` gegen `https://openrouter.ai/api/v1/chat/completions`
+(gleiches Muster wie `src/services/email-service.js` gegen die Resend REST API)
 
 ### Umgebungsvariablen
 
-ANTHROPIC_API_KEY in .env (niemals committen)
+OPENROUTER_API_KEY in .env (niemals committen)
 Vorlage: .env.example im Repo
 
 ### Kostenstrategie
 
-- Haiku für einfache, häufige Tasks (3× günstiger als Sonnet)
-- max_tokens begrenzen (z. B. 100 für Kurzbeschreibungen)
-- usage-Feld nach jedem Call loggen
+- Ausschließlich `:free`-Modelle — keine Kosten, daher kein Cost-Tracking mehr nötig
+- max_tokens weiterhin begrenzen (z. B. 100 für Kurzbeschreibungen)
+- usage-Feld (prompt_tokens/completion_tokens) nach jedem Call loggen
 
 ### Script
 
@@ -555,7 +557,7 @@ Usage: node --env-file-if-exists=.env bin/describe-url.js &lt;url&gt;
 scripts/batch-describe.js – Batch-Beschreibungen für short_links ohne description
 Usage: node --env-file-if-exists=.env scripts/batch-describe.js
 
-scripts/pr-review.js – PR-Diff per Claude Sonnet reviewen
+scripts/pr-review.js – PR-Diff per OpenRouter reviewen
 Input: pr_diff.txt
 Output: review_output.md (mit `<!-- pr-review-bot -->` Marker)
 
@@ -564,5 +566,5 @@ Output: review_output.md (mit `<!-- pr-review-bot -->` Marker)
 .github/workflows/pr-review.yml – automatisches PR-Review bei pull_request (opened, synchronize)
 
 - nur für interne PRs (Fork-PRs werden aus Sicherheitsgründen übersprungen)
-- nutzt GitHub Secret ANTHROPIC_API_KEY
+- nutzt GitHub Secret OPENROUTER_API_KEY
 - aktualisiert vorhandenen Bot-Kommentar statt bei jedem Push einen neuen zu posten
