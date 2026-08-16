@@ -63,7 +63,7 @@ npm test            # alle 148+ Tests grün
 
 ```bash
 # Smoke Test gegen Production
-curl https://link-shortener.dev2k.org/health
+curl https://link-shortener.dev2ksoftware.com/health
 ```
 
 - [ ] `/health` gibt `200 OK` zurück
