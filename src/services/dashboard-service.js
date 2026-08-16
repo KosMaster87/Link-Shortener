@@ -117,7 +117,7 @@ export const getOverviewStats = async () => {
 
 /**
  * Gibt Links absteigend nach Klickzahl zurück. Links mit 0 Klicks erscheinen am Ende.
- * @param {number} limit - Maximale Anzahl Einträge (1–100)
+ * @param {number} limit - Maximale Anzahl Einträge (1-100)
  * @returns {Promise<{ success: true, data: TopLink[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getTopLinks = async (limit) => {
@@ -134,7 +134,7 @@ export const getTopLinks = async (limit) => {
 
 /**
  * Gibt Klicks pro Tag für die letzten n Tage zurück (UTC-normiert).
- * @param {number} days - Anzahl Tage zurück ab jetzt (1–365)
+ * @param {number} days - Anzahl Tage zurück ab jetzt (1-365)
  * @returns {Promise<{ success: true, data: DayCount[] } | { success: false, error: { code: string, message: string } }>}
  */
 export const getClicksPerDay = async (days) => {

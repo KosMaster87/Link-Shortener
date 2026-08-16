@@ -1,6 +1,6 @@
 /**
  * @fileoverview Route-Handler für Nutzer-Feedback
- * @description POST /api/feedback – speichert Feedback in der DB.
+ * @description POST /api/feedback - speichert Feedback in der DB.
  *   Keine Auth erforderlich, damit auch nicht-eingeloggte Nutzer Feedback geben können.
  * @module src/routes/feedback
  */
@@ -82,7 +82,7 @@ export const handleFeedback = async (req, res) => {
     return send(res, 201, { message: "Danke für dein Feedback!" });
   } catch (err) {
     if (err.code === "42P01") {
-      // Tabelle existiert noch nicht – Migration noch nicht ausgeführt
+      // Tabelle existiert noch nicht - Migration noch nicht ausgeführt
       return send(res, 503, {
         error: "SERVICE_UNAVAILABLE",
         message: "Feedback ist gerade nicht verfügbar.",

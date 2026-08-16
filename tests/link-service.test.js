@@ -1,7 +1,7 @@
 /**
  * @fileoverview Integrationstests für link-service
  * @description Testet createLink, getLink und deleteLink gegen die echte
- *   Datenbank. Keine Mocks – so finden wir echte SQL-Fehler und
+ *   Datenbank. Keine Mocks - so finden wir echte SQL-Fehler und
  *   Schema-Probleme, die gemockte Tests verstecken würden.
  * @module tests/link-service.test
  */
@@ -18,7 +18,7 @@ import {
   updateLink,
 } from "../src/services/link-service.js";
 
-// Sammelt alle Codes, die ein Test anlegt – afterEach räumt sie weg.
+// Sammelt alle Codes, die ein Test anlegt - afterEach räumt sie weg.
 // Warum: Jeder Test soll auf einem sauberen Zustand aufbauen, damit
 // Testergebnisse nicht von der Reihenfolge der Ausführung abhängen.
 const createdCodes = [];
@@ -59,7 +59,7 @@ describe("getAllLinks", () => {
     assert.deepEqual(result.data, []);
   });
 
-  // SECURITY: undefined verhält sich wie null – kein Default-Leak.
+  // SECURITY: undefined verhält sich wie null - kein Default-Leak.
   it("gibt leeres Array zurück bei undefined userId", async () => {
     const result = await getAllLinks(undefined);
 
@@ -97,7 +97,7 @@ describe("createLink", () => {
   });
 
   // CUSTOM ALIAS: Wir verifizieren, dass der zurückgegebene code exakt dem
-  // übergebenen Alias entspricht – nicht nur, dass kein Fehler auftritt.
+  // übergebenen Alias entspricht - nicht nur, dass kein Fehler auftritt.
   it("verwendet den Custom Alias als code", async () => {
     const result = await createLink({
       url: "https://example.com",
@@ -110,7 +110,7 @@ describe("createLink", () => {
   });
 
   // RESERVED WORD: Wir testen 'api' stellvertretend für alle reserved words.
-  // Ein separater Unit-Test der RESERVED-Liste wäre overkill – es reicht zu
+  // Ein separater Unit-Test der RESERVED-Liste wäre overkill - es reicht zu
   // prüfen, dass der Mechanismus überhaupt greift.
   it("gibt err('SLUG_TAKEN') zurück bei reserviertem Alias", async () => {
     const result = await createLink({
@@ -124,7 +124,7 @@ describe("createLink", () => {
 
   // ALIAS KOLLISION: Wir legen denselben Alias zweimal an. Der erste muss
   // klappen, der zweite muss scheitern. So testen wir den DB-Uniqueness-Pfad
-  // – getrennt vom Reserved-Words-Pfad, der nie die DB erreicht.
+  // - getrennt vom Reserved-Words-Pfad, der nie die DB erreicht.
   it("gibt err('SLUG_TAKEN') zurück wenn Alias bereits vergeben", async () => {
     const first = await createLink({
       url: "https://example.com",
@@ -162,7 +162,7 @@ describe("getLink", () => {
 
   // FEHLERFALL: Ein zufälliger Code, der mit Sicherheit nicht in der DB ist.
   // Wir prüfen explizit den error-String, damit eine Änderung der Fehlercodes
-  // sofort auffällt – NOT_FOUND vs. NOTFOUND vs. not_found wären alle Bugs.
+  // sofort auffällt - NOT_FOUND vs. NOTFOUND vs. not_found wären alle Bugs.
   it("gibt err('NOT_FOUND') zurück bei unbekanntem code", async () => {
     const result = await getLink("xxxxxx");
 
@@ -201,7 +201,7 @@ describe("updateLink", () => {
   });
 
   // FEHLERFALL ungültige URL: Die Validierung soll vor dem DB-Zugriff greifen.
-  // Wir testen einen String ohne Protokoll – gleicher Eingabetyp wie in createLink,
+  // Wir testen einen String ohne Protokoll - gleicher Eingabetyp wie in createLink,
   // damit das Verhalten beider Funktionen konsistent bleibt.
   it("gibt err('INVALID_URL') zurück für ungültige URL", async () => {
     const created = await createLink({ url: "https://example.com/check" });
@@ -218,7 +218,7 @@ describe("updateLink", () => {
 
 describe("toggleActive", () => {
   // TRUE → FALSE: Neue Links haben is_active = true per DB-Default.
-  // Der erste Toggle muss also false liefern – wir prüfen den konkreten Wert,
+  // Der erste Toggle muss also false liefern - wir prüfen den konkreten Wert,
   // nicht nur success, damit ein versehentlicher SET statt NOT-Operator auffällt.
   it("schaltet is_active von true auf false", async () => {
     const created = await createLink({ url: "https://example.com/toggle1" });
@@ -231,7 +231,7 @@ describe("toggleActive", () => {
   });
 
   // FALSE → TRUE: Wir togglen zweimal, um den Rückweg zu testen. Ein einfaches
-  // SET TRUE würde diesen Test bestehen – nur NOT is_active besteht beide Richtungen.
+  // SET TRUE würde diesen Test bestehen - nur NOT is_active besteht beide Richtungen.
   it("schaltet is_active von false auf true", async () => {
     const created = await createLink({ url: "https://example.com/toggle2" });
     createdCodes.push(created.data.code);
@@ -243,7 +243,7 @@ describe("toggleActive", () => {
     assert.equal(result.data.isActive, true);
   });
 
-  // FEHLERFALL: Identisch zum NOT_FOUND-Muster in getLink und deleteLink –
+  // FEHLERFALL: Identisch zum NOT_FOUND-Muster in getLink und deleteLink -
   // konsistentes Verhalten über alle Funktionen soll explizit sichtbar sein.
   it("gibt err('NOT_FOUND') zurück für unbekannten Code", async () => {
     const result = await toggleActive("xxxxxx");
@@ -271,7 +271,7 @@ describe("deleteLink", () => {
   // sondern rufen danach getLink auf. Dieser "End-to-End"-Check innerhalb des
   // Service stellt sicher, dass der DELETE wirklich committed wurde und nicht
   // z.B. durch einen Fehler im RETURNING-Ausdruck maskiert wird.
-  it("löscht den Link – danach gibt getLink NOT_FOUND zurück", async () => {
+  it("löscht den Link - danach gibt getLink NOT_FOUND zurück", async () => {
     const created = await createLink({ url: "https://example.com/delete" });
     const code = created.data.code;
 
@@ -281,13 +281,13 @@ describe("deleteLink", () => {
     const afterDelete = await getLink(code);
     assert.equal(afterDelete.success, false);
     assert.equal(afterDelete.error.code, "NOT_FOUND");
-    // code nicht in createdCodes pushen – der Link ist bereits gelöscht
+    // code nicht in createdCodes pushen - der Link ist bereits gelöscht
   });
 });
 
 // ─── Atomare Ownership-Checks (TOCTOU-Fix) ───────────────────────────────────
 
-describe("deleteLink – Ownership atomar", () => {
+describe("deleteLink - Ownership atomar", () => {
   // FORBIDDEN: Der Link existiert, aber userId stimmt nicht überein.
   // Prüft dass kein Check-then-act-Gap existiert: die atomare CTE-Query
   // gibt FORBIDDEN zurück ohne zwei separate Roundtrips.
@@ -322,11 +322,11 @@ describe("deleteLink – Ownership atomar", () => {
     const result = await deleteLink(created.data.code, ownerId);
 
     assert.equal(result.success, true);
-    // Link ist weg – kein cleanup nötig
+    // Link ist weg - kein cleanup nötig
   });
 });
 
-describe("updateLink – Ownership atomar", () => {
+describe("updateLink - Ownership atomar", () => {
   it("gibt FORBIDDEN zurück wenn userId nicht dem Eigentümer entspricht", async () => {
     const ownerId = await insertTestUser();
     const created = await createLink(
@@ -377,7 +377,7 @@ describe("updateLink – Ownership atomar", () => {
   });
 });
 
-describe("toggleActive – Ownership atomar", () => {
+describe("toggleActive - Ownership atomar", () => {
   it("gibt FORBIDDEN zurück wenn userId nicht dem Eigentümer entspricht", async () => {
     const ownerId = await insertTestUser();
     const created = await createLink(
@@ -416,9 +416,9 @@ describe("toggleActive – Ownership atomar", () => {
   });
 });
 
-// ─── getAllLinks – clickCount ─────────────────────────────────────────────────
+// ─── getAllLinks - clickCount ─────────────────────────────────────────────────
 
-describe("getAllLinks – clickCount", () => {
+describe("getAllLinks - clickCount", () => {
   // Sichert den N+1-Fix ab: GET /api/links liefert click_count direkt,
   // UI braucht keinen separaten /stats-Aufruf mehr pro Link.
   it("enthält clickCount = 0 wenn kein Klick vorhanden", async () => {
@@ -474,7 +474,7 @@ describe("getAllLinks – clickCount", () => {
     assert.equal(link.clickCount, 0);
   });
 
-  // SECURITY: Cross-User-Isolation – User B darf Links von User A nicht sehen.
+  // SECURITY: Cross-User-Isolation - User B darf Links von User A nicht sehen.
   // Sichert den BLOCKER-Fix auf Service-Ebene ab: WHERE user_id = $1 muss
   // tatsächlich isolieren, nicht nur leere Arrays für null/undefined liefern.
   it("gibt User B keine Links von User A zurück", async () => {
@@ -494,7 +494,7 @@ describe("getAllLinks – clickCount", () => {
     assert.equal(
       leaked,
       undefined,
-      "User B sieht Link von User A – Datenleck!",
+      "User B sieht Link von User A - Datenleck!",
     );
   });
 });

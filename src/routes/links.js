@@ -67,7 +67,7 @@ const handlePost = async (req, res) => {
 };
 
 /**
- * Löscht einen Short-Link atomar – Ownership-Prüfung in derselben DB-Operation.
+ * Löscht einen Short-Link atomar - Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
  * @param {string} userId
@@ -85,7 +85,7 @@ const handleDelete = async (res, code, userId) => {
 };
 
 /**
- * Aktualisiert die URL eines Short-Links atomar – Ownership-Prüfung in derselben DB-Operation.
+ * Aktualisiert die URL eines Short-Links atomar - Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").IncomingMessage} req
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
@@ -103,7 +103,7 @@ const handlePut = async (req, res, code, userId) => {
 };
 
 /**
- * Schaltet is_active eines Short-Links atomar um – Ownership-Prüfung in derselben DB-Operation.
+ * Schaltet is_active eines Short-Links atomar um - Ownership-Prüfung in derselben DB-Operation.
  * @param {import("node:http").ServerResponse} res
  * @param {string} code
  * @param {string} userId

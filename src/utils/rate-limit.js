@@ -26,7 +26,7 @@ const cleanup = () => {
   }
 };
 
-// .unref() prevents this timer from keeping the process alive — important for test runs.
+// .unref() prevents this timer from keeping the process alive - important for test runs.
 setInterval(cleanup, CLEANUP_INTERVAL_MS).unref();
 
 /**

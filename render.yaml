@@ -16,7 +16,7 @@ services:
 
       # ── Auth ─────────────────────────────────────────────────────────────
       # generateValue: Render erstellt beim ersten Deploy automatisch einen
-      # sicheren Zufallswert – kein manuelles Setzen nötig.
+      # sicheren Zufallswert - kein manuelles Setzen nötig.
       - key: JWT_SECRET
         generateValue: true
 
@@ -35,11 +35,11 @@ services:
         value: 100
 
       # ── Email-Notifications (Resend API) ─────────────────────────────────
-      # Resend läuft über HTTPS (Port 443) – funktioniert auf Render Free.
+      # Resend läuft über HTTPS (Port 443) - funktioniert auf Render Free.
       # RESEND_API_KEY: resend.com → API Keys → Create API Key
       # FROM_EMAIL: verifizierte Absender-Domain nötig (z.B. feedback@dev2k.org)
       # TO_EMAIL: Empfänger der Feedback-Notifications
-      - key: RESEND_API_KEY # Secret – im Render Dashboard eintragen
+      - key: RESEND_API_KEY # Secret - im Render Dashboard eintragen
         sync: false
       - key: FROM_EMAIL # z.B. feedback@dev2k.org
         sync: false

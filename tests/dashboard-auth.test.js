@@ -2,7 +2,7 @@
  * @fileoverview E2E-Tests für den Dashboard Auth-Guard
  * @description Prüft, dass alle /api/dashboard/-Endpoints ohne Token 401
  *   zurückgeben und mit gültigem Token 200. Echte HTTP-Requests gegen
- *   localhost:3000 – kein Mocking.
+ *   localhost:3000 - kein Mocking.
  *
  *   Voraussetzung: Server muss laufen (`npm start`).
  *
@@ -49,10 +49,10 @@ after(async () => {
 
 // ─── Auth-Guard: 401 ohne Token ───────────────────────────────────────────────
 
-describe("GET /api/dashboard/* – ohne Token", () => {
+describe("GET /api/dashboard/* - ohne Token", () => {
   // Jeder Dashboard-Endpoint muss 401 zurückgeben, wenn kein Token mitgeschickt
   // wird. Ohne diesen Test wäre ein versehentliches Entfernen des checkAuth-Aufrufs
-  // in server.js ein stiller Bug – öffentlich zugängliche Admin-Daten.
+  // in server.js ein stiller Bug - öffentlich zugängliche Admin-Daten.
   it("GET /api/dashboard/overview → 401", async () => {
     const res = await fetch(`${BASE}/api/dashboard/overview`);
     assert.equal(res.status, 401);
@@ -76,8 +76,8 @@ describe("GET /api/dashboard/* – ohne Token", () => {
 
 // ─── Auth-Guard: 200 mit gültigem Token ──────────────────────────────────────
 
-describe("GET /api/dashboard/* – mit gültigem Token", () => {
-  // Wir prüfen nur den Status, nicht den Body – der Service-Layer hat eigene
+describe("GET /api/dashboard/* - mit gültigem Token", () => {
+  // Wir prüfen nur den Status, nicht den Body - der Service-Layer hat eigene
   // Unit-Tests. Hier geht es ausschließlich um den Auth-Guard-Durchlass.
   it("GET /api/dashboard/overview → 200", async () => {
     const token = await registerAndLogin();
@@ -118,9 +118,9 @@ describe("GET /api/dashboard/* – mit gültigem Token", () => {
 
 // ─── Fehlerhafter Token ───────────────────────────────────────────────────────
 
-describe("GET /api/dashboard/* – mit ungültigem Token", () => {
+describe("GET /api/dashboard/* - mit ungültigem Token", () => {
   // Ein manipulierter Token darf keinen Zugang gewähren.
-  // requireAuth prüft Signatur – ein gefälschtes Payload schlägt fehl.
+  // requireAuth prüft Signatur - ein gefälschtes Payload schlägt fehl.
   it("GET /api/dashboard/overview mit gefälschtem Token → 401", async () => {
     const res = await fetch(`${BASE}/api/dashboard/overview`, {
       headers: { Authorization: "Bearer gefälschter.token.wert" },

@@ -16,7 +16,7 @@ const DEFAULT_PERIOD = "day";
 const ERROR_STATUS = { NOT_FOUND: 404, INVALID_INPUT: 400, DB_ERROR: 500 };
 
 // DB_ERROR und UNEXPECTED enthalten technische Details die nicht an den Client
-// weitergegeben werden sollen — analog zur Absicherung in dashboard.js.
+// weitergegeben werden sollen - analog zur Absicherung in dashboard.js.
 const INTERNAL_CODES = new Set(["DB_ERROR", "UNEXPECTED"]);
 
 /**

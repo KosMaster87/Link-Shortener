@@ -86,7 +86,7 @@ export const register = async (email, password) => {
   if (!isValidPassword(password))
     return err({
       code: "INVALID_INPUT",
-      message: `Passwort muss ${PASSWORD_MIN}–${PASSWORD_MAX} Zeichen lang sein.`,
+      message: `Passwort muss ${PASSWORD_MIN}-${PASSWORD_MAX} Zeichen lang sein.`,
     });
   const passwordHash = await hashPassword(password);
   try {

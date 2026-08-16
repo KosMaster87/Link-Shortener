@@ -1,4 +1,4 @@
-# LinkShort – Architektur-Dokumentation
+# LinkShort - Architektur-Dokumentation
 
 ## Projektstruktur
 

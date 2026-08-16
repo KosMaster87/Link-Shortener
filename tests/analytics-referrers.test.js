@@ -1,7 +1,7 @@
 /**
  * @fileoverview Integrationstests für getReferrers
  * @description Testet Referrer-Aggregation pro Short-Link gegen die echte Datenbank.
- *   Keine Mocks — so erkennen wir SQL-Fehler und Schema-Probleme sofort.
+ *   Keine Mocks - so erkennen wir SQL-Fehler und Schema-Probleme sofort.
  * @module tests/analytics-referrers.test
  */
 import assert from "node:assert/strict";
@@ -28,7 +28,7 @@ after(async () => {
 
 // ─── Leeres Ergebnis ──────────────────────────────────────────────────────────
 
-describe("getReferrers – leeres Ergebnis", () => {
+describe("getReferrers - leeres Ergebnis", () => {
   // Ein Link ohne Klicks soll ein leeres Array zurückgeben, nicht null oder Fehler.
   it("gibt leeres Array zurück wenn keine Klicks vorhanden", async () => {
     const result = await getReferrers(testCode);
@@ -40,9 +40,9 @@ describe("getReferrers – leeres Ergebnis", () => {
 
 // ─── Sortierung und Aggregation ───────────────────────────────────────────────
 
-describe("getReferrers – Sortierung", () => {
+describe("getReferrers - Sortierung", () => {
   // ABSTEIGENDE SORTIERUNG: Der meistgenutzte Referrer muss an erster Stelle stehen.
-  // Ohne ORDER BY COUNT DESC wäre die Reihenfolge nicht-deterministisch — dieser
+  // Ohne ORDER BY COUNT DESC wäre die Reihenfolge nicht-deterministisch - dieser
   // Test erkennt ein fehlendes ORDER BY sofort.
   it("gibt Referrer absteigend nach count sortiert zurück", async () => {
     await trackClick({
@@ -105,7 +105,7 @@ describe("getReferrers – Sortierung", () => {
 
 // ─── Null-Referrer → "Direct" ─────────────────────────────────────────────────
 
-describe("getReferrers – Null-Referrer", () => {
+describe("getReferrers - Null-Referrer", () => {
   // NULL-REFERRER: trackClick speichert null/leer als "Direct" (via buildAndInsert).
   // getReferrers soll diesen gespeicherten Wert unverändert zurückgeben.
   // Warum: Ein leerer Referrer kommt von Bookmarks, E-Mails oder direkter Eingabe.
@@ -125,7 +125,7 @@ describe("getReferrers – Null-Referrer", () => {
     assert.equal(result.data[0].referrer, "Direct");
   });
 
-  // LEERER STRING → "Direct": Semantisch identisch mit null — beide bedeuten
+  // LEERER STRING → "Direct": Semantisch identisch mit null - beide bedeuten
   // "kein Referrer". Ein Refactor von `referrer || DIRECT` zu `referrer ?? DIRECT`
   // würde "" als eigenen Eintrag speichern und wäre ein stiller Breaking Change.
   it("leerer Referrer ('') erscheint als 'Direct' im Ergebnis", async () => {
@@ -145,9 +145,9 @@ describe("getReferrers – Null-Referrer", () => {
 
 // ─── Bot-Filter ───────────────────────────────────────────────────────────────
 
-describe("getReferrers – Bot-Filter", () => {
+describe("getReferrers - Bot-Filter", () => {
   // BOTS AUSBLENDEN: Ein Bot-Klick von google.com und ein Human-Klick von twitter.com.
-  // Das Ergebnis darf nur twitter.com zeigen — google.com ist Bot-Traffic und
+  // Das Ergebnis darf nur twitter.com zeigen - google.com ist Bot-Traffic und
   // würde das Referrer-Bild verfälschen (SEO-Bot ≠ echter Besucher).
   it("Bot-Klicks werden aus der Referrer-Aggregation ausgeblendet", async () => {
     await trackClick({
@@ -188,7 +188,7 @@ describe("getReferrers – Bot-Filter", () => {
 
 // ─── Fehlerfälle ──────────────────────────────────────────────────────────────
 
-describe("getReferrers – Fehlerfälle", () => {
+describe("getReferrers - Fehlerfälle", () => {
   // NOT_FOUND: Unbekannter Code soll NOT_FOUND zurückgeben, keinen DB-Fehler.
   // Gibt konsistentes Verhalten wie getStats und getClicksByPeriod.
   it("gibt err('NOT_FOUND') für unbekannten Code", async () => {

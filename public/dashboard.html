@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LinkShort – Dashboard</title>
+    <title>LinkShort - Dashboard</title>
     <style>
       *,
       *::before,
@@ -255,15 +255,15 @@
       <div class="stats-grid">
         <div class="stat-card">
           <span class="stat-label">Total Links</span>
-          <span class="stat-value" id="stat-total-links">–</span>
+          <span class="stat-value" id="stat-total-links">-</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Total Klicks</span>
-          <span class="stat-value" id="stat-total-clicks">–</span>
+          <span class="stat-value" id="stat-total-clicks">-</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Ø pro Link</span>
-          <span class="stat-value" id="stat-avg">–</span>
+          <span class="stat-value" id="stat-avg">-</span>
         </div>
       </div>
 
@@ -290,7 +290,7 @@
 
       <!-- Clicks pro Tag -->
       <div class="card">
-        <h2>Klicks pro Tag – letzte 30 Tage</h2>
+        <h2>Klicks pro Tag - letzte 30 Tage</h2>
         <div class="chart-wrap">
           <div class="chart" id="chart">
             <span class="chart-empty">Lädt…</span>
@@ -366,10 +366,10 @@
       async function loadOverview() {
         try {
           const data = await api.overview();
-          el("stat-total-links").textContent = data.total_links ?? "–";
-          el("stat-total-clicks").textContent = data.total_clicks ?? "–";
+          el("stat-total-links").textContent = data.total_links ?? "-";
+          el("stat-total-clicks").textContent = data.total_clicks ?? "-";
           el("stat-avg").textContent =
-            data.avg_clicks_per_link != null ? data.avg_clicks_per_link : "–";
+            data.avg_clicks_per_link != null ? data.avg_clicks_per_link : "-";
         } catch {
           ["stat-total-links", "stat-total-clicks", "stat-avg"].forEach(
             (id) => (el(id).textContent = "!"),

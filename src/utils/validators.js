@@ -10,7 +10,7 @@ import { err, ok } from "./result.js";
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const BLOCKED_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1"]);
 
-// These slug names conflict with server routes — /api, /dashboard etc. would
+// These slug names conflict with server routes - /api, /dashboard etc. would
 // be intercepted by the router before the redirect handler runs.
 const RESERVED = new Set([
   "api",
@@ -75,7 +75,7 @@ export const validateAlias = async (alias, pool) => {
   )
     return err({
       code: "INVALID_INPUT",
-      message: `Alias muss 1–${ALIAS_MAX_LENGTH} Zeichen lang sein.`,
+      message: `Alias muss 1-${ALIAS_MAX_LENGTH} Zeichen lang sein.`,
     });
   if (RESERVED.has(alias)) return err("SLUG_TAKEN");
   if (await aliasIsTaken(alias, pool)) return err("SLUG_TAKEN");
@@ -83,7 +83,7 @@ export const validateAlias = async (alias, pool) => {
 };
 
 /**
- * Validiert limit: muss ganzzahlig und im Bereich MIN_LIMIT–MAX_LIMIT liegen.
+ * Validiert limit: muss ganzzahlig und im Bereich MIN_LIMIT-MAX_LIMIT liegen.
  * @param {number} limit
  * @returns {{ success: true, data: number } | { success: false, error: { code: string, message: string } }}
  */
@@ -91,13 +91,13 @@ export const validateLimit = (limit) => {
   if (!Number.isInteger(limit) || limit < MIN_LIMIT || limit > MAX_LIMIT)
     return err({
       code: "INVALID_INPUT",
-      message: `limit must be ${MIN_LIMIT}–${MAX_LIMIT}. Received: ${limit}`,
+      message: `limit must be ${MIN_LIMIT}-${MAX_LIMIT}. Received: ${limit}`,
     });
   return ok(limit);
 };
 
 /**
- * Validiert days: muss ganzzahlig und im Bereich MIN_DAYS–MAX_DAYS liegen.
+ * Validiert days: muss ganzzahlig und im Bereich MIN_DAYS-MAX_DAYS liegen.
  * @param {number} days
  * @returns {{ success: true, data: number } | { success: false, error: { code: string, message: string } }}
  */
@@ -105,7 +105,7 @@ export const validateDays = (days) => {
   if (!Number.isInteger(days) || days < MIN_DAYS || days > MAX_DAYS)
     return err({
       code: "INVALID_INPUT",
-      message: `days must be ${MIN_DAYS}–${MAX_DAYS}. Received: ${days}`,
+      message: `days must be ${MIN_DAYS}-${MAX_DAYS}. Received: ${days}`,
     });
   return ok(days);
 };

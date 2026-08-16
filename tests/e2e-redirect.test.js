@@ -1,7 +1,7 @@
 /**
  * @fileoverview E2E-Tests für den Link-Redirect-Flow
  * @description Testet den kompletten Redirect-Pfad über echte HTTP-Requests
- *   gegen einen laufenden Server auf localhost:3000. Kein Mocking – so erkennen
+ *   gegen einen laufenden Server auf localhost:3000. Kein Mocking - so erkennen
  *   wir Integrationsfehler zwischen Route, Service und Datenbank.
  *
  *   Voraussetzung: Server muss manuell gestartet sein (`npm start`).
@@ -15,7 +15,7 @@ import { pool } from "../src/db/index.js";
 
 const BASE = "http://localhost:3000";
 
-// Sammelt Codes der in diesem Lauf erstellten Links – afterEach räumt nur
+// Sammelt Codes der in diesem Lauf erstellten Links - afterEach räumt nur
 // diese weg. Kein globales DELETE: npm test läuft parallel, ein globales
 // DELETE FROM short_links würde Daten anderer Test-Dateien löschen und
 // dort FK-Violations oder fehlerhafte Zählungen verursachen.
@@ -56,8 +56,8 @@ after(async () => {
 
 // ─── Redirect ─────────────────────────────────────────────────────────────────
 
-describe("GET /{code} – Redirect", () => {
-  // HAPPY PATH: Der vollständige Flow – Link anlegen, aufrufen, Stats prüfen.
+describe("GET /{code} - Redirect", () => {
+  // HAPPY PATH: Der vollständige Flow - Link anlegen, aufrufen, Stats prüfen.
   // redirect: "manual" verhindert, dass fetch dem 302 automatisch folgt,
   // damit wir Status und Location-Header direkt prüfen können.
   it("leitet zur Original-URL weiter und trackt den Klick", async () => {
@@ -82,7 +82,7 @@ describe("GET /{code} – Redirect", () => {
       "https://example.com/target",
     );
 
-    // trackClick ist fire-and-forget – kurz warten bis der DB-Write abgeschlossen ist.
+    // trackClick ist fire-and-forget - kurz warten bis der DB-Write abgeschlossen ist.
     await new Promise((r) => setTimeout(r, 100));
 
     const statsRes = await fetch(`${BASE}/api/links/${code}/stats`);
@@ -91,7 +91,7 @@ describe("GET /{code} – Redirect", () => {
   });
 
   // 404 für unbekannten Code: Der Server darf nicht abstürzen oder
-  // eine generische Fehlerseite liefern – JSON mit NOT_FOUND erwartet.
+  // eine generische Fehlerseite liefern - JSON mit NOT_FOUND erwartet.
   it("antwortet mit 404 für unbekannten Code", async () => {
     const res = await fetch(`${BASE}/xxxxxx`, { redirect: "manual" });
 
@@ -99,7 +99,7 @@ describe("GET /{code} – Redirect", () => {
   });
 
   // BOT-FILTER: Der Googlebot-UA soll von trackClick als is_bot=true markiert
-  // werden. getStats filtert Bots per is_bot=FALSE – totalClicks muss 0 bleiben.
+  // werden. getStats filtert Bots per is_bot=FALSE - totalClicks muss 0 bleiben.
   it("zählt Bot-Traffic nicht in totalClicks", async () => {
     const { token } = await registerTestUser();
     const createRes = await fetch(`${BASE}/api/links`, {
@@ -128,7 +128,7 @@ describe("GET /{code} – Redirect", () => {
 
   // MEHRERE KLICKS: Sequentielle Aufrufe müssen einzeln gezählt werden.
   // Parallel wäre schneller, aber race conditions auf dem Fire-and-forget-
-  // Track könnten Klicks verschlucken – sequentiell ist deterministischer.
+  // Track könnten Klicks verschlucken - sequentiell ist deterministischer.
   it("zählt mehrere Klicks korrekt", async () => {
     const { token } = await registerTestUser();
     const createRes = await fetch(`${BASE}/api/links`, {

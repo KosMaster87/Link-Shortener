@@ -1,7 +1,7 @@
 # Neon Migration Runbook (Render-hosted LinkShort)
 
 Dieses Runbook migriert die Production-Datenbank von Render PostgreSQL zu Neon,
-waehrend lokal auf Fedora weiterhin PostgreSQL ueber PG-Variablen genutzt wird.
+während lokal auf Fedora weiterhin PostgreSQL über PG-Variablen genutzt wird.
 
 ## Zielbild
 
@@ -30,7 +30,7 @@ Beispielstruktur:
 
 ## 2) Schema auf Neon anwenden (falls leer)
 
-Im Repo ausfuehren:
+Im Repo ausführen:
 
 ```bash
 psql "$NEON_DATABASE_URL" < src/db/schema.sql
@@ -39,7 +39,7 @@ psql "$NEON_DATABASE_URL" < src/db/migrations/003_add_description.sql
 psql "$NEON_DATABASE_URL" < src/db/migrations/004_add_feedback.sql
 ```
 
-Hinweis: Wenn du statt leerem Ziel eine echte Migration mit Daten machst, kommt der naechste Schritt mit `pg_dump`.
+Hinweis: Wenn du statt leerem Ziel eine echte Migration mit Daten machst, kommt der nächste Schritt mit `pg_dump`.
 
 ## 3) Daten von Render PostgreSQL nach Neon migrieren
 
@@ -75,14 +75,14 @@ Die Datei `render.yaml` ist bereits vorbereitet.
 
 ## 5) Health und Smoke Checks
 
-Nach Deploy pruefen:
+Nach Deploy prüfen:
 
 ```bash
 curl -sS https://link-shortener.dev2k.org/health
 curl -i https://link-shortener.dev2k.org/
 ```
 
-Danach App-Szenarien pruefen:
+Danach App-Szenarien prüfen:
 
 - Login/Register
 - Link erstellen
@@ -94,11 +94,11 @@ Danach App-Szenarien pruefen:
 
 Wenn nach Cutover Probleme auftreten:
 
-- In Render `DATABASE_URL` zur alten Render-DB zurueckstellen
-- Redeploy ausloesen
-- Incident notieren und Neon-Dump fuer Analyse sichern
+- In Render `DATABASE_URL` zur alten Render-DB zurückstellen
+- Redeploy auslösen
+- Incident notieren und Neon-Dump für Analyse sichern
 
-## Lokal auf Fedora (bleibt unveraendert)
+## Lokal auf Fedora (bleibt unverändert)
 
 Lokal weiter so:
 
@@ -107,7 +107,7 @@ Lokal weiter so:
 - `PGUSER=<lokaler user>`
 - `PGDATABASE=linkshort`
 
-Nur fuer gezielte Neon-Tests lokal kurzfristig:
+Nur für gezielte Neon-Tests lokal kurzfristig:
 
 ```bash
 USE_DATABASE_URL=true DATABASE_URL="...neon..." npm start

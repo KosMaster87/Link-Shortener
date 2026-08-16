@@ -1,7 +1,7 @@
 /**
  * @fileoverview Integrationstests für auth-service
  * @description Testet register und login gegen die echte Datenbank.
- *   Kein Mocking – so sehen wir reale Fehler bei Schema-Änderungen oder
+ *   Kein Mocking - so sehen wir reale Fehler bei Schema-Änderungen oder
  *   Passwort-Hash-Korruption.
  * @module tests/auth-service.test
  */

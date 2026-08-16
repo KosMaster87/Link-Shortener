@@ -115,7 +115,7 @@ export const getLink = async (code) => {
 /**
  * Lädt alle Short-Links eines Users aus der DB (nach created_at DESC).
  * Reichert jeden Link mit der Klickanzahl (ohne Bot-Traffic) an.
- * Ohne userId wird ein leeres Array zurückgegeben – nicht alle Links aller User.
+ * Ohne userId wird ein leeres Array zurückgegeben - nicht alle Links aller User.
  * @param {string | null} userId
  * @returns {Promise<{ success: true, data: Array<Link & { clickCount: number }> }>}
  */
@@ -152,7 +152,7 @@ const queryOwned = (writeCte, params) =>
 
 /**
  * Löscht den Short-Link mit dem gegebenen Code aus der DB.
- * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Mit userId: atomar - prüft Ownership in derselben Operation.
  * Gibt NOT_FOUND oder FORBIDDEN zurück, nie beides.
  * @param {string} code - 6-stelliger alphanumerischer Slug
  * @param {string | null} userId - UUID des anfragenden Users
@@ -177,7 +177,7 @@ export const deleteLink = async (code, userId = null) => {
 
 /**
  * Aktualisiert die original_url eines bestehenden Short-Links.
- * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Mit userId: atomar - prüft Ownership in derselben Operation.
  * Gibt INVALID_URL, NOT_FOUND oder FORBIDDEN zurück.
  * @param {string} code - 6-stelliger alphanumerischer Slug
  * @param {string} url - Neue Ziel-URL
@@ -206,7 +206,7 @@ export const updateLink = async (code, url, userId = null) => {
 
 /**
  * Schaltet is_active eines Short-Links um (true → false, false → true).
- * Mit userId: atomar – prüft Ownership in derselben Operation.
+ * Mit userId: atomar - prüft Ownership in derselben Operation.
  * Gibt NOT_FOUND oder FORBIDDEN zurück.
  * @param {string} code - 6-stelliger alphanumerischer Slug
  * @param {string | null} userId - UUID des anfragenden Users

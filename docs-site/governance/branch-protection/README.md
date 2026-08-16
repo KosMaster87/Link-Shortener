@@ -1,10 +1,10 @@
-# Branch Protection — Übersicht
+# Branch Protection - Übersicht
 
 Dieses Verzeichnis dokumentiert die Branch-Protection-Strategie für den `master`-Branch des Link-Shortener-Projekts.
 
 ## Aktiver Ruleset: Baseline (Solo)
 
-Für Einzel-Entwickler ausgelegt — schützt gegen direkte riskante Änderungen, erzwingt PR-basierten Merge mit CI.
+Für Einzel-Entwickler ausgelegt - schützt gegen direkte riskante Änderungen, erzwingt PR-basierten Merge mit CI.
 
 ### Aktive Regeln
 
@@ -20,17 +20,17 @@ Für Einzel-Entwickler ausgelegt — schützt gegen direkte riskante Änderungen
 
 ### Required Status Checks
 
-- `test` — Pflicht, blockiert Merge bei Fehler
+- `test` - Pflicht, blockiert Merge bei Fehler
 
-**Nicht als Required Check:** `coverage-soft-gate` — absichtlich, weil dieser Job `continue-on-error: true` hat und nur warnt.
+**Nicht als Required Check:** `coverage-soft-gate` - absichtlich, weil dieser Job `continue-on-error: true` hat und nur warnt.
 
 ## Roadmap: Wann wird `coverage-soft-gate` zum echten Gate?
 
 | Zeitraum     | Maßnahme                                          |
 | ------------ | ------------------------------------------------- |
-| Jetzt        | `continue-on-error: true` — warnt, blockiert nie  |
+| Jetzt        | `continue-on-error: true` - warnt, blockiert nie  |
 | In ~4 Wochen | Coverage-Threshold auf 30% setzen, weiterhin soft |
-| In ~8 Wochen | `continue-on-error: false` — echter Gate bei 60%  |
+| In ~8 Wochen | `continue-on-error: false` - echter Gate bei 60%  |
 
 ## GitHub Einrichtung (einmalig)
 

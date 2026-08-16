@@ -30,9 +30,9 @@ after(async () => {
   await pool.end();
 });
 
-// ─── classifyDevice – Unit-Tests ──────────────────────────────────────────────
+// ─── classifyDevice - Unit-Tests ──────────────────────────────────────────────
 
-describe("classifyDevice – Desktop", () => {
+describe("classifyDevice - Desktop", () => {
   // DESKTOP-FALLBACK: Ein normaler Chrome-UA enthält kein bekanntes Mobile/Tablet-Pattern.
   it("Chrome-Desktop-UA → desktop", () => {
     const ua =
@@ -47,15 +47,15 @@ describe("classifyDevice – Desktop", () => {
   });
 });
 
-describe("classifyDevice – Mobile", () => {
-  // IPHONE: Enthält "iphone" — eindeutiges Mobile-Pattern.
+describe("classifyDevice - Mobile", () => {
+  // IPHONE: Enthält "iphone" - eindeutiges Mobile-Pattern.
   it("iPhone-UA → mobile", () => {
     const ua =
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
     assert.equal(classifyDevice(ua), "mobile");
   });
 
-  // ANDROID-PHONE: Enthält "android" und "mobile" — beide treffen Mobile-Pattern.
+  // ANDROID-PHONE: Enthält "android" und "mobile" - beide treffen Mobile-Pattern.
   // Enthält KEIN "tablet" → darf nicht als Tablet klassifiziert werden.
   it("Android-Phone-UA → mobile", () => {
     const ua =
@@ -70,8 +70,8 @@ describe("classifyDevice – Mobile", () => {
   });
 });
 
-describe("classifyDevice – Tablet", () => {
-  // IPAD: Enthält "ipad" — eindeutiges Tablet-Pattern, kein Mobile-Konflikt.
+describe("classifyDevice - Tablet", () => {
+  // IPAD: Enthält "ipad" - eindeutiges Tablet-Pattern, kein Mobile-Konflikt.
   it("iPad-UA → tablet", () => {
     const ua =
       "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
@@ -93,7 +93,7 @@ describe("classifyDevice – Tablet", () => {
   });
 });
 
-describe("classifyDevice – Crash-Schutz", () => {
+describe("classifyDevice - Crash-Schutz", () => {
   // NULL/UNDEFINED/LEER: Diese Werte kommen vor wenn User-Agent nicht gesendet wurde
   // (curl, programmatische Clients). toLowerCase() würde auf null crashen.
   it("null → desktop (kein Crash)", () => {
@@ -109,11 +109,11 @@ describe("classifyDevice – Crash-Schutz", () => {
   });
 });
 
-// ─── getDeviceStats – Integrationstests ──────────────────────────────────────
+// ─── getDeviceStats - Integrationstests ──────────────────────────────────────
 
-describe("getDeviceStats – leeres Ergebnis", () => {
+describe("getDeviceStats - leeres Ergebnis", () => {
   // Null-Zähler für alle Typen wenn kein Klick vorhanden.
-  // Warum: Das Frontend rendert Balkendiagramme — null statt 0 würde die UI brechen.
+  // Warum: Das Frontend rendert Balkendiagramme - null statt 0 würde die UI brechen.
   it("gibt { mobile: 0, tablet: 0, desktop: 0 } zurück wenn keine Klicks", async () => {
     const result = await getDeviceStats(testCode);
 
@@ -122,7 +122,7 @@ describe("getDeviceStats – leeres Ergebnis", () => {
   });
 });
 
-describe("getDeviceStats – Gerätezählung", () => {
+describe("getDeviceStats - Gerätezählung", () => {
   // DESKTOP: Chrome-Desktop-UA soll korrekt in desktop-Zähler einfließen.
   it("zählt Desktop-Klick korrekt", async () => {
     await trackClick({
@@ -179,7 +179,7 @@ describe("getDeviceStats – Gerätezählung", () => {
     assert.equal(result.data.desktop, 0);
   });
 
-  // GEMISCHTE GERÄTE: Alle drei Typen in einem Test — stellt sicher dass
+  // GEMISCHTE GERÄTE: Alle drei Typen in einem Test - stellt sicher dass
   // aggregateDevices() alle Zähler korrekt inkrementiert, nicht überschreibt.
   it("zählt mobile, tablet und desktop getrennt", async () => {
     await trackClick({
@@ -212,8 +212,8 @@ describe("getDeviceStats – Gerätezählung", () => {
   });
 });
 
-describe("getDeviceStats – Bot-Filter und Null-UA", () => {
-  // BOTS AUSBLENDEN: Bot-Klicks haben is_bot=TRUE — queryUserAgents filtert sie
+describe("getDeviceStats - Bot-Filter und Null-UA", () => {
+  // BOTS AUSBLENDEN: Bot-Klicks haben is_bot=TRUE - queryUserAgents filtert sie
   // per is_bot=FALSE heraus. Bots verfälschen sonst die Geräte-Verteilung.
   it("Bot-Klicks fließen nicht in die Geräte-Zählung ein", async () => {
     await trackClick({
@@ -233,14 +233,14 @@ describe("getDeviceStats – Bot-Filter und Null-UA", () => {
     const result = await getDeviceStats(testCode);
 
     assert.equal(result.success, true);
-    // Nur der Human-Klick zählt — Googlebot-UA bleibt unsichtbar
+    // Nur der Human-Klick zählt - Googlebot-UA bleibt unsichtbar
     assert.equal(result.data.desktop, 1);
     assert.equal(result.data.mobile, 0);
   });
 
   // NULL-USER-AGENT: Klicks ohne UA (curl, programmatische Clients) werden via
   // `user_agent IS NOT NULL` in queryUserAgents herausgefiltert.
-  // aggregateDevices sieht diese Zeilen nie — kein Crash durch classifyDevice(null).
+  // aggregateDevices sieht diese Zeilen nie - kein Crash durch classifyDevice(null).
   it("Klicks ohne user_agent werden übersprungen, kein Crash", async () => {
     await trackClick({
       linkId: testCode,
@@ -256,7 +256,7 @@ describe("getDeviceStats – Bot-Filter und Null-UA", () => {
   });
 });
 
-describe("getDeviceStats – Fehlerfälle", () => {
+describe("getDeviceStats - Fehlerfälle", () => {
   // NOT_FOUND: Konsistentes Verhalten wie getStats, getReferrers, getClicksByPeriod.
   it("gibt err('NOT_FOUND') für unbekannten Code", async () => {
     const result = await getDeviceStats("xxxxxx");

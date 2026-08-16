@@ -1,7 +1,7 @@
 /**
  * @fileoverview Integrationstests für analytics-service
  * @description Testet trackClick und getStats gegen die echte Datenbank.
- *   Keine Mocks – so finden wir echte SQL-Fehler und Schema-Probleme,
+ *   Keine Mocks - so finden wir echte SQL-Fehler und Schema-Probleme,
  *   die gemockte Tests verstecken würden.
  *
  *   Voraussetzung: link_clicks braucht eine ip_hash-Spalte:
@@ -18,7 +18,7 @@ import { createLink } from "../src/services/link-service.js";
 
 // Isolation: Jeder Test bekommt seinen eigenen Link via beforeEach.
 // Warum nicht before()? npm test führt alle Test-Dateien parallel aus.
-// e2e-redirect.test.js bereinigt in afterEach die gesamte short_links-Tabelle –
+// e2e-redirect.test.js bereinigt in afterEach die gesamte short_links-Tabelle -
 // ein shared testCode würde mitten in einem analytics-Test gelöscht werden
 // → FK-Violation im nächsten trackClick-Aufruf.
 // Mit beforeEach/afterEach ist jeder Test vollständig in sich geschlossen.
@@ -30,7 +30,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  // ON DELETE CASCADE löscht link_clicks automatisch mit – explizit für Klarheit.
+  // ON DELETE CASCADE löscht link_clicks automatisch mit - explizit für Klarheit.
   await pool.query("DELETE FROM link_clicks WHERE code = $1", [testCode]);
   await pool.query("DELETE FROM short_links WHERE code = $1", [testCode]);
 });
@@ -65,7 +65,7 @@ describe("trackClick", () => {
       rows[0].user_agent,
       "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)",
     );
-    // ip_hash muss gesetzt sein – aber nicht die originale IP
+    // ip_hash muss gesetzt sein - aber nicht die originale IP
     assert.ok(rows[0].ip_hash);
     assert.notEqual(rows[0].ip_hash, "192.168.1.100");
   });
@@ -92,7 +92,7 @@ describe("trackClick", () => {
 
   // BOT-FILTER: Klicks von bekannten Bots sollen nicht in die Statistik
   // einfließen. Wir prüfen, dass der Klick entweder gar nicht gespeichert
-  // wird oder is_bot = true gesetzt ist – beides verhindert Verfälschung.
+  // wird oder is_bot = true gesetzt ist - beides verhindert Verfälschung.
   it("markiert Googlebot als Bot (trifft 'bot'-Pattern)", async () => {
     await trackClick({
       linkId: testCode,
@@ -164,7 +164,7 @@ describe("trackClick", () => {
   // LEERER REFERRER → "Direct": Ein leerer String "" ist nicht null, aber
   // semantisch identisch mit "kein Referrer". Ohne diesen Test wäre ein
   // Refactor von `referrer || DIRECT` zu `referrer ?? DIRECT` ein silent
-  // breaking change – "" würde dann als eigener Referrer gespeichert.
+  // breaking change - "" würde dann als eigener Referrer gespeichert.
   it("speichert leeren Referrer ('') als 'Direct'", async () => {
     await trackClick({
       linkId: testCode,
@@ -195,9 +195,9 @@ describe("trackClick", () => {
     assert.equal(result.error.code, "NOT_FOUND");
   });
 
-  // BUG #1 – NULL USER-AGENT: Requests ohne User-Agent-Header sind gültig
+  // BUG #1 - NULL USER-AGENT: Requests ohne User-Agent-Header sind gültig
   // (curl, programmatische Clients). isBot() darf nicht mit toLowerCase() auf
-  // null/undefined crashen – stattdessen wird der Klick als Nicht-Bot gezählt.
+  // null/undefined crashen - stattdessen wird der Klick als Nicht-Bot gezählt.
   it("stürzt nicht ab wenn userAgent null ist", async () => {
     const result = await trackClick({
       linkId: testCode,
@@ -209,8 +209,8 @@ describe("trackClick", () => {
     assert.equal(result.success, true);
   });
 
-  // BUG #3 – LEERE IP: Eine leere IP würde zu hashIp("") → immer demselben
-  // Hash führen. Alle Requests ohne IP wären dann ein einziger Unique Visitor –
+  // BUG #3 - LEERE IP: Eine leere IP würde zu hashIp("") → immer demselben
+  // Hash führen. Alle Requests ohne IP wären dann ein einziger Unique Visitor -
   // ein stiller Datenfehler der nie als Exception sichtbar wird.
   it("gibt err('MISSING_IP') zurück wenn ip leer oder null ist", async () => {
     const emptyIp = await trackClick({
@@ -233,7 +233,7 @@ describe("trackClick", () => {
   });
 });
 
-// ─── bot detection – Pattern-Coverage ────────────────────────────────────────
+// ─── bot detection - Pattern-Coverage ────────────────────────────────────────
 
 // Jeder BOT_PATTERN-Eintrag braucht mindestens einen Test. "bot" und
 // "externalhit" sind durch Googlebot/facebookexternalhit oben bereits abgedeckt.
@@ -244,7 +244,7 @@ describe("trackClick", () => {
 // "spider-man-fan.com" im Referrer, aber hier im UA) würde echten Traffic
 // ausblenden. Der Test stellt sicher, dass ein normaler Browser-UA nie geblockt wird.
 
-describe("bot detection – Pattern-Coverage", () => {
+describe("bot detection - Pattern-Coverage", () => {
   // "crawler"-Pattern: DataForSeo-Crawler ist ein SEO-Audit-Bot.
   // Substring-Match greift auf "crawler" unabhängig von Position.
   it("markiert DataForSeo-Crawler als Bot (trifft 'crawler'-Pattern)", async () => {
@@ -281,7 +281,7 @@ describe("bot detection – Pattern-Coverage", () => {
   });
 
   // "slurp"-Pattern: Yahoo Search Crawler. "Slurp" kommt in keinem
-  // normalen Browser-UA vor – ein sehr gezieltes Pattern ohne False-Positive-Risiko.
+  // normalen Browser-UA vor - ein sehr gezieltes Pattern ohne False-Positive-Risiko.
   it("markiert Yahoo! Slurp als Bot (trifft 'slurp'-Pattern)", async () => {
     await trackClick({
       linkId: testCode,
@@ -299,7 +299,7 @@ describe("bot detection – Pattern-Coverage", () => {
   });
 
   // "mediapartners"-Pattern: Google AdSense Crawler. Dieser Bot besucht
-  // Seiten, um Werbeanzeigen zu optimieren – kein echter Nutzer-Klick.
+  // Seiten, um Werbeanzeigen zu optimieren - kein echter Nutzer-Klick.
   it("markiert Mediapartners-Google als Bot (trifft 'mediapartners'-Pattern)", async () => {
     await trackClick({
       linkId: testCode,
@@ -335,7 +335,7 @@ describe("bot detection – Pattern-Coverage", () => {
 
   // FALSE-POSITIVE-SCHUTZ: Ein typischer Chrome-UA enthält keines der
   // Bot-Pattern. Würde ein neues Pattern wie ".*" oder "mozilla" ergänzt,
-  // fiele dieser Test sofort rot – bevor echter Traffic verloren geht.
+  // fiele dieser Test sofort rot - bevor echter Traffic verloren geht.
   it("zählt normalen Chrome-Browser-UA als echten Klick (kein Bot)", async () => {
     await trackClick({
       linkId: testCode,
@@ -349,7 +349,7 @@ describe("bot detection – Pattern-Coverage", () => {
       "SELECT COUNT(*)::int AS total FROM link_clicks WHERE code = $1 AND is_bot = FALSE",
       [testCode],
     );
-    // Echte Klicks müssen zählbar bleiben – Bot-Filter darf nicht überfiltern.
+    // Echte Klicks müssen zählbar bleiben - Bot-Filter darf nicht überfiltern.
     assert.equal(rows[0].total, 1);
   });
 });
@@ -359,7 +359,7 @@ describe("bot detection – Pattern-Coverage", () => {
 describe("getStats", () => {
   // LEERE STATS: Ein neuer Link ohne Klicks soll valide Statistiken zurückgeben,
   // keine Fehler oder null-Werte. Warum: Das Dashboard rendert auch für neue
-  // Links – ein Crash hier wäre ein UX-Bug.
+  // Links - ein Crash hier wäre ein UX-Bug.
   it("gibt leere Statistiken für Link ohne Klicks zurück", async () => {
     const result = await getStats(testCode);
 
@@ -373,7 +373,7 @@ describe("getStats", () => {
   // TOTAL CLICKS: Wir speichern eine bekannte Anzahl Klicks und prüfen die
   // Summe. Getrennt von clicksByDay, damit ein Fehler in der GROUP BY-Logik
   // den Zähler-Test nicht maskiert.
-  // Zwei Klicks kommen von derselben IP – damit ist totalClicks=3, uniqueVisitors=2.
+  // Zwei Klicks kommen von derselben IP - damit ist totalClicks=3, uniqueVisitors=2.
   // Ohne diesen Unterschied wäre ein versehentlicher Vertausch der beiden Felder
   // im Return-Objekt unsichtbar, weil beide Werte identisch wären.
   it("zählt totalClicks korrekt", async () => {
@@ -400,13 +400,13 @@ describe("getStats", () => {
 
     assert.equal(result.success, true);
     assert.equal(result.data.totalClicks, 3);
-    // uniqueVisitors muss 2 sein – stellt sicher, dass totalClicks nicht
+    // uniqueVisitors muss 2 sein - stellt sicher, dass totalClicks nicht
     // versehentlich den unique-Wert zurückgibt.
     assert.equal(result.data.uniqueVisitors, 2);
   });
 
   // TOP REFERRERS: Wir prüfen Sortierung und Aggregation. Zwei Klicks von
-  // twitter.com, einer von github.com – twitter muss an erster Stelle stehen.
+  // twitter.com, einer von github.com - twitter muss an erster Stelle stehen.
   it("aggregiert topReferrers absteigend nach Anzahl", async () => {
     await trackClick({
       linkId: testCode,
@@ -437,7 +437,7 @@ describe("getStats", () => {
   });
 
   // CLICKS BY DAY: Klicks desselben Tages sollen zu einem Eintrag aggregiert
-  // werden. Wir legen mehrere Klicks an – alle landen heute – und erwarten
+  // werden. Wir legen mehrere Klicks an - alle landen heute - und erwarten
   // genau einen Eintrag in clicksByDay.
   it("gruppiert clicksByDay nach Datum (ein Eintrag pro Tag)", async () => {
     await trackClick({
@@ -465,7 +465,7 @@ describe("getStats", () => {
 
   // UNIQUE VISITORS: Zwei Klicks von derselben IP sollen nur als ein
   // Unique Visitor zählen. Wir testen die Hash-Deduplizierung, nicht die
-  // Rohdaten – so bleibt der Test gültig auch wenn sich das Hash-Verfahren
+  // Rohdaten - so bleibt der Test gültig auch wenn sich das Hash-Verfahren
   // ändert, solange die Semantik (gleiche IP = 1 Visitor) stimmt.
   it("zählt uniqueVisitors anhand von ip_hash (gleiche IP = 1)", async () => {
     const sameIp = "192.168.0.1";
@@ -495,7 +495,7 @@ describe("getStats", () => {
     assert.equal(result.data.uniqueVisitors, 2);
   });
 
-  // IP-HASH DETERMINISMUS: Gleiche IP muss immer denselben Hash erzeugen –
+  // IP-HASH DETERMINISMUS: Gleiche IP muss immer denselben Hash erzeugen -
   // das ist die stille Voraussetzung für COUNT(DISTINCT ip_hash). Ein Refactor
   // zu randomBytes() würde alle uniqueVisitors-Tests bestehen lassen, aber die
   // Semantik wäre kaputt. Wir prüfen direkt in der DB, nicht im Service.
@@ -526,7 +526,7 @@ describe("getStats", () => {
 
   // BOT-KLICKS IN GETSTATS: trackClick markiert Bots mit is_bot=true.
   // getStats filtert per is_bot=FALSE. Dieser Test prüft die Verbindung
-  // zwischen beiden Funktionen – ein fehlendes WHERE is_bot=FALSE in einer
+  // zwischen beiden Funktionen - ein fehlendes WHERE is_bot=FALSE in einer
   // der Aggregat-Queries würde erst hier auffallen, nicht im trackClick-Test.
   it("blendet Bot-Klicks aus allen getStats-Metriken aus", async () => {
     const botAgent = "Googlebot/2.1 (+http://www.google.com/bot.html)";
@@ -562,13 +562,13 @@ describe("getStats", () => {
     assert.ok(!referrers.includes("https://google.com"));
     assert.ok(referrers.includes("https://twitter.com"));
     // clicksByDay darf nur den einen Human-Klick enthalten, nicht die Bot-Klicks.
-    // Dieser Query hat ein eigenes WHERE in queryStats – ohne expliziten Test
+    // Dieser Query hat ein eigenes WHERE in queryStats - ohne expliziten Test
     // würde ein fehlendes is_bot=FALSE dort unbemerkt bleiben.
     assert.equal(result.data.clicksByDay[0].count, 1);
   });
 
   // FEHLERFALL: getStats für unbekannten Code gibt NOT_FOUND zurück.
-  // Wir prüfen den error-String explizit – konsistentes Verhalten über
+  // Wir prüfen den error-String explizit - konsistentes Verhalten über
   // alle Service-Funktionen soll sichtbar sein.
   it("gibt err('NOT_FOUND') zurück für unbekannten code", async () => {
     const result = await getStats("xxxxxx");

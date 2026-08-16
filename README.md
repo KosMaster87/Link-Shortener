@@ -15,11 +15,11 @@ und können direkt im Interface Feedback senden.
 
 ## Entwicklungsansatz
 
-- **Strukturierte KI-Prompts** mit Kontext und Constraints — Code bleibt konsistent mit dem gewählten Stack, kein Blind-Trust in generierte Ausgaben
-- **TDD** (Tests vor der Implementierung) — Regressions in Production mehrfach verhindert, Coverage als Qualitätssignal nicht als Pflicht
-- **Dependency Injection** für alle externen Services — vollständig ohne echten Netzwerkzugriff testbar
+- **Strukturierte KI-Prompts** mit Kontext und Constraints - Code bleibt konsistent mit dem gewählten Stack, kein Blind-Trust in generierte Ausgaben
+- **TDD** (Tests vor der Implementierung) - Regressions in Production mehrfach verhindert, Coverage als Qualitätssignal nicht als Pflicht
+- **Dependency Injection** für alle externen Services - vollständig ohne echten Netzwerkzugriff testbar
 
-> KI-gestützt entwickelt mit Claude Code — mit Review-Mindset, nicht als Shortcut
+> KI-gestützt entwickelt mit Claude Code - mit Review-Mindset, nicht als Shortcut
 
 ## Features
 
@@ -86,16 +86,16 @@ PGUSER=your-local-pg-user
 PGPASSWORD=
 USE_DATABASE_URL=false
 
-# Required — generieren: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Required - generieren: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 JWT_SECRET=
 SESSION_EXPIRY=86400
 
-# Email notifications (optional — skip to disable)
+# Email notifications (optional - skip to disable)
 RESEND_API_KEY=
 FROM_EMAIL=
 TO_EMAIL=
 
-# Optional — benötigt für scripts/batch-describe.js und PR-Review-Workflow
+# Optional - benötigt für scripts/batch-describe.js und PR-Review-Workflow
 ANTHROPIC_API_KEY=
 LOG_LEVEL=info
 RATE_LIMIT_MAX=100
@@ -112,7 +112,7 @@ Lokal greift standardmäßig die Unix-Socket-Konfiguration über die `PG*`-Varia
 | CI       | `false`          | `PGHOST`, `PGUSER`, `PGDATABASE` (TCP, aus Workflow-Secrets) |
 | Render   | `true`           | `DATABASE_URL` (Neon PostgreSQL, gepoolte URL mit `-pooler`) |
 
-> **Hinweis:** Ist `DATABASE_URL` gesetzt und `USE_DATABASE_URL=false`, erscheint eine Warnung im Server-Log. Das ist kein Fehler — der Server nutzt trotzdem die lokale DB.
+> **Hinweis:** Ist `DATABASE_URL` gesetzt und `USE_DATABASE_URL=false`, erscheint eine Warnung im Server-Log. Das ist kein Fehler - der Server nutzt trotzdem die lokale DB.
 
 **Neon lokal testen** (bewusst, nicht Standard):
 
@@ -199,12 +199,12 @@ All write operations require `Authorization: Bearer <token>`.
 
 | Method | Path                    | Body / Params    | Response                          |
 | ------ | ----------------------- | ---------------- | --------------------------------- |
-| GET    | /api/links              | —                | Array of links with `description` |
+| GET    | /api/links              | -                | Array of links with `description` |
 | POST   | /api/links              | `{ url, slug? }` | Created link                      |
 | PUT    | /api/links/:code        | `{ url }`        | Updated link                      |
-| PATCH  | /api/links/:code/toggle | —                | Toggled link                      |
-| DELETE | /api/links/:code        | —                | 204 No Content                    |
-| GET    | /:code                  | —                | 302 Redirect                      |
+| PATCH  | /api/links/:code/toggle | -                | Toggled link                      |
+| DELETE | /api/links/:code        | -                | 204 No Content                    |
+| GET    | /:code                  | -                | 302 Redirect                      |
 
 Each link object includes `code`, `originalUrl`, `description`, `createdAt`, `isActive`, and `userId`.
 
@@ -214,10 +214,10 @@ All dashboard endpoints require `Authorization: Bearer <token>`.
 
 | Method | Path                          | Query Params  |
 | ------ | ----------------------------- | ------------- |
-| GET    | /api/dashboard/overview       | —             |
-| GET    | /api/dashboard/top-links      | limit (1–100) |
-| GET    | /api/dashboard/clicks-per-day | days (1–365)  |
-| GET    | /api/dashboard/referrer/:code | —             |
+| GET    | /api/dashboard/overview       | -             |
+| GET    | /api/dashboard/top-links      | limit (1-100) |
+| GET    | /api/dashboard/clicks-per-day | days (1-365)  |
+| GET    | /api/dashboard/referrer/:code | -             |
 
 ### Feedback
 
@@ -231,10 +231,10 @@ All dashboard endpoints require `Authorization: Bearer <token>`.
 
 | Method | Path                           | Query Params              |
 | ------ | ------------------------------ | ------------------------- |
-| GET    | /api/links/:code/clicks        | —                         |
+| GET    | /api/links/:code/clicks        | -                         |
 | GET    | /api/links/:code/clicks/period | period (day\|week\|month) |
-| GET    | /api/links/:code/referrers     | —                         |
-| GET    | /api/links/:code/devices       | —                         |
+| GET    | /api/links/:code/referrers     | -                         |
+| GET    | /api/links/:code/devices       | -                         |
 
 ## Project Structure
 

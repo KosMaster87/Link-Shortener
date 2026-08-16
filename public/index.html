@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LinkShort – Links</title>
+    <title>LinkShort - Links</title>
     <style>
       *,
       *::before,
@@ -402,7 +402,7 @@
           }
 
           tbody.innerHTML = links
-            .map((link) => renderRow(link, link.clickCount ?? "–"))
+            .map((link) => renderRow(link, link.clickCount ?? "-"))
             .join("");
           attachRowHandlers();
         } catch {
@@ -544,7 +544,7 @@
             if (!res.ok) {
               errorEl.textContent =
                 data.error === "INVALID_URL"
-                  ? "Ungültige URL – bitte http:// oder https:// voranstellen."
+                  ? "Ungültige URL - bitte http:// oder https:// voranstellen."
                   : "Alias bereits vergeben.";
               errorEl.style.display = "block";
               return;

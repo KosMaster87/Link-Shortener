@@ -1,6 +1,6 @@
 /**
  * @fileoverview Integrationstests für POST /api/feedback via handleFeedback
- * @description Testet den Route-Handler direkt – ohne den HTTP-Server zu starten.
+ * @description Testet den Route-Handler direkt - ohne den HTTP-Server zu starten.
  *   Nutzt die echte DB, damit der Constraint-Check (CHECK type IN ...) greift.
  * @module tests/feedback.test
  */
@@ -43,7 +43,7 @@ after(() => pool.end());
 
 // ─── Validierung ──────────────────────────────────────────────────────────────
 
-describe("handleFeedback – Validierung", () => {
+describe("handleFeedback - Validierung", () => {
   it("gibt 422 zurück bei ungültigem type", async () => {
     const { res, result } = fakeRes();
     await handleFeedback(
@@ -86,7 +86,7 @@ describe("handleFeedback – Validierung", () => {
 
 // ─── Erfolgsfälle ─────────────────────────────────────────────────────────────
 
-describe("handleFeedback – Speichern", () => {
+describe("handleFeedback - Speichern", () => {
   it("speichert Feedback ohne E-Mail und gibt 201 zurück", async () => {
     const { res, result } = fakeRes();
     await handleFeedback(

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Characterization Tests für die Redirect-Logik
- * @description Dokumentiert das aktuelle Verhalten des Redirect-Pfads exakt —
+ * @description Dokumentiert das aktuelle Verhalten des Redirect-Pfads exakt -
  *   inklusive des bekannten Bugs, dass inaktive Links trotzdem weiterleiten.
  *
  *   Zwei Testebenen:
@@ -26,7 +26,7 @@ import {
 
 const BASE = "http://localhost:3000";
 
-// Sammelt alle Codes dieses Testlaufs — afterEach räumt nur diese weg.
+// Sammelt alle Codes dieses Testlaufs - afterEach räumt nur diese weg.
 // ON DELETE CASCADE löscht link_clicks automatisch mit.
 const createdCodes = [];
 
@@ -72,7 +72,7 @@ const createInactive = async (url) => {
 
 // ── Service Layer: getLink ────────────────────────────────────────────────────
 
-describe("getLink – Service Layer", () => {
+describe("getLink - Service Layer", () => {
   // HAPPY PATH: Ein frisch angelegter Link hat is_active = TRUE per DB-Default.
   // getLink gibt alle Felder korrekt zurück.
   it("gibt aktiven Link mit korrekten Feldern zurück", async () => {
@@ -91,7 +91,7 @@ describe("getLink – Service Layer", () => {
     assert.equal(result.data.userId, null);
   });
 
-  // KNOWN BUG – Service Layer:
+  // KNOWN BUG - Service Layer:
   //   getLink filtert NICHT auf is_active. Die SQL-Query lautet:
   //     "SELECT * FROM short_links WHERE code = $1"
   //   Ein deaktivierter Link kommt mit success=true zurück, isActive=false.
@@ -101,7 +101,7 @@ describe("getLink – Service Layer", () => {
   //   "SELECT * FROM short_links WHERE code = $1 AND is_active = TRUE"
   //
   // Wenn dieser Test auf NOT_FOUND umspringt, ist der Bug auf Service-Ebene behoben.
-  it("gibt inaktiven Link zurück — KNOWN BUG: kein is_active-Filter in getLink", async () => {
+  it("gibt inaktiven Link zurück - KNOWN BUG: kein is_active-Filter in getLink", async () => {
     const code = await createInactive("https://example.com/char-svc-inactive");
 
     const result = await getLink(code);
@@ -122,10 +122,10 @@ describe("getLink – Service Layer", () => {
 });
 
 // ── HTTP Layer: GET /:code ────────────────────────────────────────────────────
-// Voraussetzung: `npm start` — Server auf localhost:3000.
+// Voraussetzung: `npm start` - Server auf localhost:3000.
 // redirect: "manual" verhindert dass fetch dem 302 automatisch folgt.
 
-describe("GET /:code – HTTP Redirect", () => {
+describe("GET /:code - HTTP Redirect", () => {
   // HAPPY PATH: Aktiver Link → 302 mit korrektem Location-Header.
   it("aktiver Link → 302 mit korrekter Location", async () => {
     const code = await createActive("https://example.com/char-http-active");
@@ -139,7 +139,7 @@ describe("GET /:code – HTTP Redirect", () => {
     );
   });
 
-  // KNOWN BUG – Route Layer:
+  // KNOWN BUG - Route Layer:
   //   handleRedirect prüft result.data.isActive nach getLink() nicht.
   //   Code (redirect.js:42ff):
   //     const result = await getLink(params.code);
@@ -151,7 +151,7 @@ describe("GET /:code – HTTP Redirect", () => {
   //   if (!result.data.isActive) return send(res, 404, { error: "NOT_FOUND" });
   //
   // Wenn dieser Test auf 404 umspringt, ist der Bug auf Route-Ebene behoben.
-  it("inaktiver Link → 302 — KNOWN BUG: sollte 404 sein", async () => {
+  it("inaktiver Link → 302 - KNOWN BUG: sollte 404 sein", async () => {
     const code = await createInactive("https://example.com/char-http-inactive");
 
     const res = await fetch(`${BASE}/${code}`, { redirect: "manual" });
@@ -174,7 +174,7 @@ describe("GET /:code – HTTP Redirect", () => {
   });
 
   // ROUTER-CONSTRAINT: Der Code-Regex in server.js ist /^\/([a-zA-Z0-9]{6})$/.
-  // Codes mit falscher Länge treffen den Redirect-Handler nicht — serveStatic
+  // Codes mit falscher Länge treffen den Redirect-Handler nicht - serveStatic
   // liefert 404, weil keine passende Datei in public/ existiert.
   it("Code mit 5 Zeichen → 404 (kein Regex-Match im Router)", async () => {
     const res = await fetch(`${BASE}/xxxxx`, { redirect: "manual" });
@@ -188,7 +188,7 @@ describe("GET /:code – HTTP Redirect", () => {
     assert.equal(res.status, 404);
   });
 
-  // SECURITY HEADERS: Alle Responses sollen die konfigurierten Security-Header tragen —
+  // SECURITY HEADERS: Alle Responses sollen die konfigurierten Security-Header tragen -
   // auch Redirects. Stellt sicher dass applySecurityHeaders vor routeGet aufgerufen wird.
   it("302-Response enthält Security-Header", async () => {
     const code = await createActive("https://example.com/char-secheaders");
@@ -203,10 +203,10 @@ describe("GET /:code – HTTP Redirect", () => {
 });
 
 // ── Click-Tracking (fire-and-forget) ─────────────────────────────────────────
-// trackClick läuft nach dem 302 asynchron — kurze Wartezeit für den DB-Write.
+// trackClick läuft nach dem 302 asynchron - kurze Wartezeit für den DB-Write.
 // Direkte Abfrage auf link_clicks (nicht via /stats), um den Rohzustand zu sehen.
 
-describe("Click-Tracking – fire-and-forget", () => {
+describe("Click-Tracking - fire-and-forget", () => {
   // HAPPY PATH: Ein Klick schreibt genau eine Zeile in link_clicks.
   it("schreibt einen Eintrag in link_clicks", async () => {
     const code = await createActive("https://example.com/char-track-basic");
@@ -255,7 +255,7 @@ describe("Click-Tracking – fire-and-forget", () => {
     assert.equal(rows[0].referrer, "Direct");
   });
 
-  // BOT-ERKENNUNG: "Googlebot" enthält "bot" — trifft BOT_PATTERNS in analytics-service.js.
+  // BOT-ERKENNUNG: "Googlebot" enthält "bot" - trifft BOT_PATTERNS in analytics-service.js.
   // is_bot=true → dieser Klick erscheint nicht in getStats/totalClicks.
   it("setzt is_bot=true für Googlebot User-Agent", async () => {
     const code = await createActive("https://example.com/char-track-bot");
@@ -296,7 +296,7 @@ describe("Click-Tracking – fire-and-forget", () => {
     assert.equal(rows[0].is_bot, false);
   });
 
-  // IP-HASH: redirect.js nutzt socket.remoteAddress (kein x-forwarded-for —
+  // IP-HASH: redirect.js nutzt socket.remoteAddress (kein x-forwarded-for -
   // der wäre fälschbar). analytics-service.js hasht die IP mit SHA-256.
   // Ergebnis: 64 Hex-Zeichen, nie Klartext-IP.
   it("speichert ip_hash als 64-stelligen SHA-256 Hex-String, nicht als Klartext", async () => {
@@ -320,11 +320,11 @@ describe("Click-Tracking – fire-and-forget", () => {
 
   // BUG-FOLGE: Weil handleRedirect inaktive Links trotzdem weiterleitet,
   // läuft auch trackClick durch. Klicks auf inaktive Links werden in die DB
-  // geschrieben — obwohl der Link "deaktiviert" ist.
+  // geschrieben - obwohl der Link "deaktiviert" ist.
   //
   // Wenn der is_active-Bug behoben wird (404 vor dem trackClick-Aufruf),
   // muss dieser Test auf rows.length === 0 geändert werden.
-  it("trackt Klick auch für inaktive Links — Folge des is_active-Bugs", async () => {
+  it("trackt Klick auch für inaktive Links - Folge des is_active-Bugs", async () => {
     const code = await createInactive(
       "https://example.com/char-track-inactive",
     );
@@ -342,7 +342,7 @@ describe("Click-Tracking – fire-and-forget", () => {
   });
 
   // FIRE-AND-FORGET: handleRedirect wartet nicht auf trackClick.
-  // Der 302 kommt sofort — trackClick läuft im Hintergrund weiter.
+  // Der 302 kommt sofort - trackClick läuft im Hintergrund weiter.
   // Dieser Test verifiziert, dass der 302 auch dann korrekt kommt,
   // wenn der Klick-Write noch aussteht.
   it("sendet 302 sofort ohne auf den Klick-Write zu warten", async () => {
@@ -357,7 +357,7 @@ describe("Click-Tracking – fire-and-forget", () => {
     assert.equal(res.status, 302);
     assert.ok(
       elapsed < 200,
-      `302 kam erst nach ${elapsed}ms — zu langsam für fire-and-forget`,
+      `302 kam erst nach ${elapsed}ms - zu langsam für fire-and-forget`,
     );
   });
 });

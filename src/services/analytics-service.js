@@ -164,7 +164,7 @@ const queryTotalClicks = (code) =>
  * Gibt Klickzahlen gruppiert nach Tag zurück, absteigend sortiert.
  * TECH DEBT: Timezone ist hardcodiert auf UTC. Nutzer in UTC+1 sehen Klicks
  * um 23:30 Ortszeit als nächsten Tag. Lösung: konfigurierbare Timezone pro
- * Account oder per Request-Parameter – erst relevant wenn Nutzer das melden.
+ * Account oder per Request-Parameter - erst relevant wenn Nutzer das melden.
  * @param {string} code
  * @returns {Promise<import("pg").QueryResult>}
  */
@@ -227,7 +227,7 @@ const queryStats = async (code) => {
 
 /**
  * Gibt Klickzahlen gruppiert nach Periode (day/week/month) zurück, absteigend sortiert.
- * DATE_TRUNC schneidet auf den Periodenanfang — Montag für week, 1. des Monats für month.
+ * DATE_TRUNC schneidet auf den Periodenanfang - Montag für week, 1. des Monats für month.
  * @param {string} code
  * @param {string} period - "day" | "week" | "month"
  * @returns {Promise<import("pg").QueryResult>}
@@ -329,7 +329,7 @@ const queryDeviceStats = (code) =>
 
 /**
  * Gibt Geräte-Verteilung (mobile/tablet/desktop) für einen Short-Link zurück.
- * Aggregation erfolgt vollständig in SQL — kein In-Memory-Scan der Rohdaten.
+ * Aggregation erfolgt vollständig in SQL - kein In-Memory-Scan der Rohdaten.
  * Gibt NOT_FOUND zurück wenn kein Link mit diesem Code existiert.
  * @param {string} code - Code des Short-Links
  * @returns {Promise<{ success: true, data: DeviceStats } | { success: false, error: { code: string, message?: string } }>}

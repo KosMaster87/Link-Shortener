@@ -4,9 +4,9 @@ Dieser Ordner enthält nur manuell geschriebene Projektdokumentation.
 
 ## Ordner
 
-- `manual/architecture/` - Architektur, Moduluebersichten, API-Flow
+- `manual/architecture/` - Architektur, Modulübersichten, API-Flow
 - `manual/decisions/` - ADRs und technische Entscheidungen
-- `manual/how-to/` - Schritt-fuer-Schritt-Anleitungen
+- `manual/how-to/` - Schritt-für-Schritt-Anleitungen
 - `manual/runbooks/` - Betrieb, Incident- und Deployment-Runbooks
 
 ## Trennung der Doku-Typen

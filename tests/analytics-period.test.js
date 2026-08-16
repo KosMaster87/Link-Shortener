@@ -33,9 +33,9 @@ after(async () => {
 
 // ─── Leeres Ergebnis ──────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – leeres Ergebnis", () => {
+describe("getClicksByPeriod - leeres Ergebnis", () => {
   // Ein Link ohne Klicks soll ein leeres Array zurückgeben, nicht null oder Fehler.
-  // Warum: Das Frontend rendert für neue Links — ein Crash oder null wäre ein UX-Bug.
+  // Warum: Das Frontend rendert für neue Links - ein Crash oder null wäre ein UX-Bug.
   it("gibt leeres Array zurück wenn keine Klicks vorhanden", async () => {
     const result = await getClicksByPeriod(testCode, "day");
 
@@ -46,9 +46,9 @@ describe("getClicksByPeriod – leeres Ergebnis", () => {
 
 // ─── period=day ───────────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – period=day", () => {
+describe("getClicksByPeriod - period=day", () => {
   // AGGREGATION: Zwei Klicks am selben Tag sollen zu einem Eintrag gebündelt
-  // werden. Ohne GROUP BY würden 2 Einträge zurückkommen — dieser Test erkennt
+  // werden. Ohne GROUP BY würden 2 Einträge zurückkommen - dieser Test erkennt
   // fehlende oder falsche DATE_TRUNC-Logik sofort.
   it("Klicks desselben Tages werden zu einem Eintrag aggregiert", async () => {
     await trackClick({
@@ -72,7 +72,7 @@ describe("getClicksByPeriod – period=day", () => {
   });
 
   // FORMAT: period_start muss als YYYY-MM-DD zurückkommen, nicht als JS-Date-Objekt.
-  // Der pg-Treiber wandelt DATE-Typ automatisch in Date-Objekte um — TO_CHAR
+  // Der pg-Treiber wandelt DATE-Typ automatisch in Date-Objekte um - TO_CHAR
   // verhindert das. Ohne diesen Test bliebe ein Refactor zu ::date unbemerkt
   // bis ein Frontend-Bug gemeldet wird.
   it("period_start hat Format YYYY-MM-DD", async () => {
@@ -89,7 +89,7 @@ describe("getClicksByPeriod – period=day", () => {
   });
 
   // VERSCHIEDENE TAGE: Klicks aus verschiedenen Tagen müssen getrennte Einträge
-  // erzeugen. trackClick setzt clicked_at=NOW() — ältere Klicks via Raw-SQL.
+  // erzeugen. trackClick setzt clicked_at=NOW() - ältere Klicks via Raw-SQL.
   it("Klicks verschiedener Tage erscheinen als separate Einträge", async () => {
     await pool.query(
       `INSERT INTO link_clicks (code, referrer, ip_hash, is_bot, clicked_at)
@@ -107,7 +107,7 @@ describe("getClicksByPeriod – period=day", () => {
 
 // ─── period=week ──────────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – period=week", () => {
+describe("getClicksByPeriod - period=week", () => {
   // WOCHENGRUPPIERUNG: Klicks in derselben Woche → 1 Eintrag.
   // DATE_TRUNC('week', ...) gibt den Montag der Woche zurück (ISO-Standard).
   it("Klicks derselben Woche werden zu einem Eintrag aggregiert", async () => {
@@ -150,7 +150,7 @@ describe("getClicksByPeriod – period=week", () => {
 
 // ─── period=month ─────────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – period=month", () => {
+describe("getClicksByPeriod - period=month", () => {
   // MONATSGRUPPIERUNG: Klicks im selben Monat → 1 Eintrag.
   it("Klicks desselben Monats werden zu einem Eintrag aggregiert", async () => {
     await trackClick({
@@ -191,9 +191,9 @@ describe("getClicksByPeriod – period=month", () => {
 
 // ─── Bot-Filter ───────────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – Bot-Filter", () => {
+describe("getClicksByPeriod - Bot-Filter", () => {
   // BOTS AUSBLENDEN: Ein Bot-Klick und ein Human-Klick am selben Tag.
-  // Das Ergebnis darf nur count=1 zeigen — is_bot=FALSE greift in der Query.
+  // Das Ergebnis darf nur count=1 zeigen - is_bot=FALSE greift in der Query.
   // Wäre das Filter-Prädikat entfernt, würde count=2 erscheinen.
   it("Bot-Klicks werden aus der Aggregation ausgeblendet", async () => {
     await trackClick({
@@ -234,7 +234,7 @@ describe("getClicksByPeriod – Bot-Filter", () => {
 
 // ─── Fehlerfälle ──────────────────────────────────────────────────────────────
 
-describe("getClicksByPeriod – Fehlerfälle", () => {
+describe("getClicksByPeriod - Fehlerfälle", () => {
   // NOT_FOUND: Unbekannter Code soll NOT_FOUND zurückgeben, keinen DB-Fehler.
   it("gibt err('NOT_FOUND') für unbekannten Code", async () => {
     const result = await getClicksByPeriod("xxxxxx", "day");
@@ -243,7 +243,7 @@ describe("getClicksByPeriod – Fehlerfälle", () => {
     assert.equal(result.error.code, "NOT_FOUND");
   });
 
-  // INVALID_INPUT: "year" ist keine erlaubte Periode — Validation greift vor
+  // INVALID_INPUT: "year" ist keine erlaubte Periode - Validation greift vor
   // dem DB-Zugriff. Stellt sicher dass kein unkontrollierter SQL-Parameter
   // an DATE_TRUNC übergeben wird.
   it("gibt err('INVALID_INPUT') für period='year'", async () => {

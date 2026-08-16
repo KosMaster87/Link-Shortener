@@ -23,7 +23,7 @@ const send = (res, status, data) => {
 
 /**
  * Extrahiert die Client-IP aus dem Request.
- * Verwendet ausschließlich socket.remoteAddress — x-forwarded-for wird
+ * Verwendet ausschließlich socket.remoteAddress - x-forwarded-for wird
  * ignoriert, da er vom Client fälschbar ist (IP-Spoofing).
  * @param {import("node:http").IncomingMessage} req
  * @returns {string}
