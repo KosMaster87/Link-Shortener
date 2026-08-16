@@ -1,7 +1,9 @@
 /**
  * @fileoverview Characterization Tests für die Redirect-Logik
- * @description Dokumentiert das aktuelle Verhalten des Redirect-Pfads exakt -
- *   inklusive des bekannten Bugs, dass inaktive Links trotzdem weiterleiten.
+ * @description Dokumentiert das aktuelle Verhalten des Redirect-Pfads exakt.
+ *   Der frühere P0-Bug (inaktive Links leiteten trotzdem weiter) ist behoben -
+ *   der Guard sitzt in handleRedirect (redirect.js), getLink() bleibt bewusst
+ *   generisch ohne is_active-Filter.
  *
  *   Zwei Testebenen:
  *   - Service Layer (getLink): direkte DB-Verbindung, kein Server nötig.
@@ -9,7 +11,7 @@
  *
  *   Was dokumentiert wird:
  *   - Aktiver Link → 302 ✓
- *   - Inaktiver Link → 302 (BUG: sollte 404 sein) ← explizit markiert
+ *   - Inaktiver Link → 404 ✓
  *   - Unbekannter Code → 404 ✓
  *   - Click-Tracking fire-and-forget ✓ (Referrer, UA, ip_hash, Bot-Flag)
  *
@@ -91,22 +93,15 @@ describe("getLink - Service Layer", () => {
     assert.equal(result.data.userId, null);
   });
 
-  // KNOWN BUG - Service Layer:
-  //   getLink filtert NICHT auf is_active. Die SQL-Query lautet:
-  //     "SELECT * FROM short_links WHERE code = $1"
-  //   Ein deaktivierter Link kommt mit success=true zurück, isActive=false.
-  //   handleRedirect sieht daher kein Fehlersignal und leitet weiter.
-  //
-  // Fix (eine von zwei Stellen):
-  //   "SELECT * FROM short_links WHERE code = $1 AND is_active = TRUE"
-  //
-  // Wenn dieser Test auf NOT_FOUND umspringt, ist der Bug auf Service-Ebene behoben.
-  it("gibt inaktiven Link zurück - KNOWN BUG: kein is_active-Filter in getLink", async () => {
+  // Bewusstes Design, kein Bug: getLink() bleibt generisch und filtert nicht
+  // auf is_active - der Guard sitzt in handleRedirect (redirect.js), direkt
+  // wo "inaktiv" auch tatsächlich "kein Redirect mehr" bedeuten soll. getLink()
+  // selbst hat nur diesen einen Aufrufer; ein Filter hier wäre unnötig eng.
+  it("gibt inaktiven Link mit isActive=false zurück (kein Filter in getLink)", async () => {
     const code = await createInactive("https://example.com/char-svc-inactive");
 
     const result = await getLink(code);
 
-    // BUG: erwartet wäre { success: false, error: { code: "NOT_FOUND" } }
     assert.equal(result.success, true);
     assert.equal(result.data.isActive, false); // bestätigt: Link ist wirklich inaktiv
     assert.equal(result.data.code, code);
@@ -139,29 +134,16 @@ describe("GET /:code - HTTP Redirect", () => {
     );
   });
 
-  // KNOWN BUG - Route Layer:
-  //   handleRedirect prüft result.data.isActive nach getLink() nicht.
-  //   Code (redirect.js:42ff):
-  //     const result = await getLink(params.code);
-  //     if (!result.success) return send(res, 404, ...);
-  //     // ← hier fehlt: if (!result.data.isActive) return send(res, 404, ...)
-  //     res.writeHead(302, { Location: result.data.originalUrl });
-  //
-  // Fix (zweite Stelle, alternativ zu getLink-Fix):
-  //   if (!result.data.isActive) return send(res, 404, { error: "NOT_FOUND" });
-  //
-  // Wenn dieser Test auf 404 umspringt, ist der Bug auf Route-Ebene behoben.
-  it("inaktiver Link → 302 - KNOWN BUG: sollte 404 sein", async () => {
+  // FIXED (vorher KNOWN BUG): handleRedirect prüft result.data.isActive
+  // jetzt nach getLink() (redirect.js:44) und liefert 404 statt weiterzuleiten.
+  it("inaktiver Link → 404", async () => {
     const code = await createInactive("https://example.com/char-http-inactive");
 
     const res = await fetch(`${BASE}/${code}`, { redirect: "manual" });
 
-    // BUG: erwartet wäre 404. Aktuelles Verhalten: 302 auf die Original-URL.
-    assert.equal(res.status, 302);
-    assert.equal(
-      res.headers.get("location"),
-      "https://example.com/char-http-inactive",
-    );
+    assert.equal(res.status, 404);
+    const body = await res.json();
+    assert.equal(body.error, "NOT_FOUND");
   });
 
   // FEHLERFALL: Unbekannter Code → 404 JSON. Korrekt implementiert.
@@ -318,13 +300,9 @@ describe("Click-Tracking - fire-and-forget", () => {
     );
   });
 
-  // BUG-FOLGE: Weil handleRedirect inaktive Links trotzdem weiterleitet,
-  // läuft auch trackClick durch. Klicks auf inaktive Links werden in die DB
-  // geschrieben - obwohl der Link "deaktiviert" ist.
-  //
-  // Wenn der is_active-Bug behoben wird (404 vor dem trackClick-Aufruf),
-  // muss dieser Test auf rows.length === 0 geändert werden.
-  it("trackt Klick auch für inaktive Links - Folge des is_active-Bugs", async () => {
+  // FIXED (vorher BUG-FOLGE): Der 404-Return für inaktive Links kommt jetzt
+  // vor dem trackClick-Aufruf, es wird also kein Klick mehr geschrieben.
+  it("trackt keinen Klick für inaktive Links", async () => {
     const code = await createInactive(
       "https://example.com/char-track-inactive",
     );
@@ -336,9 +314,7 @@ describe("Click-Tracking - fire-and-forget", () => {
       "SELECT code FROM link_clicks WHERE code = $1",
       [code],
     );
-    // BUG: Bei korrektem 404 würde trackClick nie aufgerufen → rows.length === 0.
-    // Aktuelles Verhalten: Klick wird trotzdem geschrieben.
-    assert.equal(rows.length, 1);
+    assert.equal(rows.length, 0);
   });
 
   // FIRE-AND-FORGET: handleRedirect wartet nicht auf trackClick.
