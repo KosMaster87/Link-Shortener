@@ -36,9 +36,9 @@ jobs:
           git fetch --no-tags origin "${{ github.base_ref }}:${{ github.base_ref }}"
           git diff "${{ github.base_ref }}...HEAD" > pr_diff.txt
 
-      - name: Run Claude review
+      - name: Run OpenRouter review
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: node scripts/pr-review.js
 
       - name: Upsert PR comment

@@ -1,12 +1,10 @@
 /**
- * @fileoverview CLI-Script: Generiert eine deutsche Kurzbeschreibung für eine URL via Claude API.
+ * @fileoverview CLI-Script: Generiert eine deutsche Kurzbeschreibung für eine URL via OpenRouter.
  * Usage: node --env-file-if-exists=.env bin/describe-url.js <url>
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-
-const INPUT_COST_PER_TOKEN = 1 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 5 / 1_000_000;
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MODEL = "google/gemma-4-26b-a4b-it:free";
 
 const url = process.argv[2];
 
@@ -16,23 +14,47 @@ if (!url) {
   process.exit(1);
 }
 
-const client = new Anthropic();
+const apiKey = process.env.OPENROUTER_API_KEY?.trim();
 
-const response = await client.messages.create({
-  model: "claude-haiku-4-5",
-  max_tokens: 100,
-  system:
-    "URL-Beschreibungs-Generator für LinkShort. Antworte mit genau einem Satz auf Deutsch. Kein Punkt am Ende.",
-  messages: [{ role: "user", content: url }],
+if (!apiKey) {
+  console.error("Fehler: OPENROUTER_API_KEY ist nicht gesetzt.");
+  process.exit(1);
+}
+
+const response = await fetch(OPENROUTER_URL, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://link-shortener.dev2ksoftware.com",
+    "X-Title": "LinkShort",
+  },
+  body: JSON.stringify({
+    model: MODEL,
+    max_tokens: 100,
+    messages: [
+      {
+        role: "system",
+        content:
+          "URL-Beschreibungs-Generator für LinkShort. Antworte mit genau einem Satz auf Deutsch. Kein Punkt am Ende.",
+      },
+      { role: "user", content: url },
+    ],
+  }),
 });
 
-const text = response.content.find((b) => b.type === "text")?.text ?? "";
+if (!response.ok) {
+  console.error(
+    `OpenRouter API Fehler ${response.status}: ${await response.text()}`,
+  );
+  process.exit(1);
+}
+
+const data = await response.json();
+const text = data.choices?.[0]?.message?.content?.trim() ?? "";
 console.log(text);
 
-const { input_tokens, output_tokens } = response.usage;
-const cost =
-  input_tokens * INPUT_COST_PER_TOKEN + output_tokens * OUTPUT_COST_PER_TOKEN;
-
+const { prompt_tokens, completion_tokens } = data.usage ?? {};
 console.error(
-  `[tokens] input=${input_tokens} output=${output_tokens} cost=$${cost.toFixed(6)}`,
+  `[tokens] input=${prompt_tokens ?? "?"} output=${completion_tokens ?? "?"} model=${MODEL} (kostenlos)`,
 );
