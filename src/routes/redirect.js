@@ -33,7 +33,7 @@ const extractIp = (req) => req.socket.remoteAddress ?? "";
 /**
  * Löst einen Short-Code zur Original-URL auf und sendet einen 302-Redirect.
  * Zeichnet dabei Referrer, User-Agent und IP als Klick-Ereignis auf (fire-and-forget).
- * Schlägt mit 404 fehl wenn kein Link mit dem Code existiert.
+ * Schlägt mit 404 fehl wenn kein Link mit dem Code existiert oder er deaktiviert ist.
  * @param {import("node:http").IncomingMessage} req - HTTP-Request
  * @param {import("node:http").ServerResponse} res - HTTP-Response
  * @param {{ code: string }} params - Route-Parameter mit dem Link-Code
@@ -42,6 +42,7 @@ const extractIp = (req) => req.socket.remoteAddress ?? "";
 export const handleRedirect = async (req, res, params) => {
   const result = await getLink(params.code);
   if (!result.success) return send(res, 404, { error: "NOT_FOUND" });
+  if (!result.data.isActive) return send(res, 404, { error: "NOT_FOUND" });
 
   trackClick({
     linkId: params.code,

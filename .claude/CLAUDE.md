@@ -276,27 +276,6 @@ Spart bei 100K Klicks einen kompletten Table Scan pro Dashboard-Aufruf.
 - Rate-Limit liefert `429`
 - Redirect- und Service-Tests grün (`pnpm run test`)
 
-## Bekannte Bugs
-
-### P0 — Inaktive Links werden weitergeleitet (nicht gefixed)
-
-**Dateien:** `src/services/link-service.js:107`, `src/routes/redirect.js:42`
-
-`getLink()` filtert nicht nach `is_active`. Ein via Toggle deaktivierter Link leitet weiterhin weiter.
-
-```js
-// link-service.js — fehlender Filter:
-"SELECT * FROM short_links WHERE code = $1";
-// korrekt wäre:
-"SELECT * FROM short_links WHERE code = $1 AND is_active = TRUE";
-
-// redirect.js — fehlender Guard nach getLink():
-// if (!result.data.isActive) return send(res, 404, { error: "NOT_FOUND" });
-```
-
-**Auswirkung:** Das Toggle-Feature (PATCH `/api/links/:code/toggle`) hat keine Wirkung auf Redirects.
-**Testlücke:** `tests/e2e-redirect.test.js` testet keinen inaktiven Link.
-
 ## Dead Code & Phantom Dependencies
 
 ### `nodemailer` — installiert, nie benutzt
@@ -343,7 +322,6 @@ Codebase. Export entfernen oder als interne Helpers belassen.
 | -------------------------------- | --------- | ----------------------------------------------------------------------- |
 | `src/middleware/auth.js`         | Hoch      | `requireAuth` 401-Pfad, Token-Expiry, Manipulation des Payloads         |
 | `src/utils/jwt.js`               | Hoch      | `verifyToken` mit abgelaufenem Token, falscher Signatur                 |
-| `src/routes/redirect.js`         | Hoch      | Inaktiver Link → 404 (deckt P0-Bug ab)                                  |
 | `src/utils/rate-limit.js`        | Mittel    | Sliding-Window-Korrektheit, Bucket-Isolation                            |
 | `src/utils/validators.js`        | Mittel    | `validateAlias` mit reservierten Slugs, `isValidUrl` mit internen Hosts |
 | `src/routes/links.js`            | Mittel    | HTTP-Layer: 405 METHOD_NOT_ALLOWED, 403 Ownership                       |

@@ -98,6 +98,33 @@ describe("GET /{code} - Redirect", () => {
     assert.equal(res.status, 404);
   });
 
+  // P0-Regressionstest: ein deaktivierter Link (via Toggle) darf nicht mehr
+  // weiterleiten. Vorher fehlte der is_active-Guard im Redirect-Pfad.
+  it("antwortet mit 404 für einen deaktivierten Link", async () => {
+    const { token } = await registerTestUser();
+    const createRes = await fetch(`${BASE}/api/links`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ url: "https://example.com/inactive" }),
+    });
+    assert.equal(createRes.status, 201);
+    const { code } = await createRes.json();
+    createdCodes.push(code);
+
+    const toggleRes = await fetch(`${BASE}/api/links/${code}/toggle`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(toggleRes.status, 200);
+    assert.equal((await toggleRes.json()).isActive, false);
+
+    const redirectRes = await fetch(`${BASE}/${code}`, { redirect: "manual" });
+    assert.equal(redirectRes.status, 404);
+  });
+
   // BOT-FILTER: Der Googlebot-UA soll von trackClick als is_bot=true markiert
   // werden. getStats filtert Bots per is_bot=FALSE - totalClicks muss 0 bleiben.
   it("zählt Bot-Traffic nicht in totalClicks", async () => {
