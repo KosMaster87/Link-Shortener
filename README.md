@@ -1,6 +1,6 @@
 # LinkShort
 
-[![CI](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml/badge.svg)](https://github.com/KosMaster87/Link-Shortener/actions/workflows/ci.yml)
+[![CI](https://github.com/KosMaster87/Link-Shortener-Render/actions/workflows/ci.yml/badge.svg)](https://github.com/KosMaster87/Link-Shortener-Render/actions/workflows/ci.yml)
 ![Node.js](https://img.shields.io/badge/Node.js-22-green)
 
 Ein URL-Shortener mit Analytics-Dashboard und Feedback-Widget. Node.js (natives `node:http`),
@@ -48,7 +48,7 @@ Hosting: Render (Node-Service + Docusaurus-Static-Service) · DB: Neon PostgreSQ
 
 ```bash
 # 1. Clone & install
-git clone https://github.com/KosMaster87/Link-Shortener.git && cd Link-Shortener
+git clone https://github.com/KosMaster87/Link-Shortener-Render.git && cd Link-Shortener-Render
 pnpm install
 
 # 2. Create PostgreSQL database
