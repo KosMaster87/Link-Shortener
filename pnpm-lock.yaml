@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       nodemailer:
-        specifier: ^8.0.7
-        version: 8.0.11
+        specifier: ^9.0.6
+        version: 9.0.6
       pg:
         specifier: ^8.13.3
         version: 8.23.0
@@ -316,8 +316,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  nodemailer@8.0.11:
-    resolution: {integrity: sha512-nrO/pDAUKl+wXX+lx16tDLbnm0fW6sK/x8mgohaCpg+CdCEl482bD4tCuAZk2DyliruiNTIZxRCoWkDqJEnAiA==}
+  nodemailer@9.0.6:
+    resolution: {integrity: sha512-IQUGFdhdGwI9+AWX+FpUt4DLmvFaOjTMEoneTIWX/RXxuy1TdenPwWrvFMSfLkPKl+HQEXWuSAxEMMbPYXtBmg==}
     engines: {node: '>=6.0.0'}
 
   onetime@7.0.0:
@@ -774,7 +774,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  nodemailer@8.0.11: {}
+  nodemailer@9.0.6: {}
 
   onetime@7.0.0:
     dependencies:
